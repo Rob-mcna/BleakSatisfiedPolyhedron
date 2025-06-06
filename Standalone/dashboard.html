@@ -1,0 +1,25 @@
+<section id="dashboardSection">
+  <h1>Asset Wells Integrity Status</h1>
+  <div class="dashboard-filters">
+    <select id="filterCountry"><option value="">All Countries</option><option>Country A</option><option>Country B</option></select>
+    <select id="filterField"><option value="">All Fields</option><option>Field 1</option><option>Field 2</option></select>
+    <select id="filterPlatform"><option value="">All Platforms</option><option>Platform X</option><option>Platform Y</option></select>
+    <select id="filterStatus">
+      <option value="">All Statuses</option>
+      <option value="OK">OK</option>
+      <option value="Warning">Warning</option>
+      <option value="Fail">Fail</option>
+    </select>
+  </div>
+  <div class="dashboard-kpis">
+    <div class="kpi-card">Wells: <span id="kpiWells">12</span></div>
+    <div class="kpi-card green">OK: <span id="kpiOK">8</span></div>
+    <div class="kpi-card yellow">Warning: <span id="kpiWarning">2</span></div>
+    <div class="kpi-card red">Fail: <span id="kpiFail">2</span></div>
+    <div class="kpi-card">Pending Repairs: <span id="kpiRepairs">3</span></div>
+    <div class="kpi-card">Active Deviations: <span id="kpiDeviations">1</span></div>
+  </div>
+  <div class="well-status-board" id="wellStatusBoard">
+    <!-- Well circles/cards will be rendered here -->
+  </div>
+</section>
