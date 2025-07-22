@@ -1,0 +1,1040 @@
+/* === Global & Background === */
+/* KUE HE REVISADO */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* === Global & Background === */
+body {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: #ffff;
+  color: #0c0d0e;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+a, a:visited {  /* delete this part? */
+  color: #00f331;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: #be2222;
+}
+
+
+/* === Main Content === */
+main {
+  margin-left: 250px;
+  margin-top: 30px;
+  padding: 48px 38px 42px 38px;
+  min-height: 100vh;
+  background: #fff;
+  max-width: 1350px;
+}
+@media (max-width: 900px) {
+  main {
+    padding: 24px 4vw 18px 4vw;
+    margin-left: 0;
+  }
+  .main-menu { /* delete this part? */
+    position: static;
+    width: 100vw;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #222224;
+    padding: 0;
+    gap: 0;
+  }
+}
+
+
+
+/* === Buttons & CTAs === */
+
+
+
+/* === Inputs, Selects, Textareas === */
+input, select, textarea {
+  background: #fff;
+  color: #151516;
+  border: 1.5px solid #111213;
+  border-radius: 7px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  font-size: 1.01em;
+  transition: border 0.16s, background 0.16s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #0d0e0f;
+  outline: none;
+  background: #fff;
+}
+
+input[type="file"] {
+  background: none;
+  color: #202324;
+  border: none;
+  margin-bottom: 0;
+}
+
+/* === Table Styles === */
+table {
+  width: 900%;                    /* instead of 100% */
+  max-width: 800px;             /* add this */
+  margin: 0 auto 24px auto;     /* center the table */
+  border-collapse: collapse;
+  background: #fff;
+  color: #000;
+  border: 1.8px solid #111213;  /* add outer border */
+  border-radius: 8px;          /* add rounded corners */
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* add subtle shadow */
+}
+
+th, td {
+  border: 1px solid #ddd;       /* lighter, thinner borders */
+  text-align: center;
+  padding: 10px 1px;           /* more generous padding */
+}
+
+th {
+  background: #97d6f3;         /* light gray header background */
+  color: #333;                 /* darker text */
+  font-weight: 400;
+  font-size: 1.1em;            /* smaller than 1.36em */
+  border-bottom: 2px solid #dee2e6; /* thicker bottom border */
+}
+
+
+
+/* === Login Overlay === */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+.login-overlay {
+  position: fixed;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: linear-gradient(135deg, #fff 0%, #fff 100%);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-overlay-title {
+  position: absolute;
+  top: 75px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #000;
+  letter-spacing: 1px;
+  z-index: 1;
+  pointer-events: none;
+  text-shadow: 0 4px 24px #fff8;
+  filter: drop-shadow(0 2px 12px #8ec6f9);
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-form {
+  background: rgba(255,255,255,0.75);
+  padding: 48px 44px 40px 44px;
+  border-radius: 5px;
+  box-shadow: 0 8px 40px #6fbeff44, 0 2px 24px #0001;
+  min-width: 350px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border: 0px solid #2e92a3;
+  position: relative;
+  backdrop-filter: blur(14px) saturate(120%);
+ 
+}
+
+@keyframes fadeInScale2 {
+  from { opacity: 0; transform: scale(0.93);}
+  to   { opacity: 1; transform: scale(1);}
+}
+
+.login-form h2 {
+  margin: 0 0 20px 0;
+  color: #000;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  font-size: 1.65em;
+  
+}
+
+.login-form label {
+  font-size: 1em;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-weight: 400;
+  transition: color 0.2s;
+  margin-bottom: 4px;
+  letter-spacing: 0.03em;
+}
+
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  background: rgba(244,251,254,0.95);
+  border: 0.005px solid #000;
+  border-radius: 13px;
+  padding: 12px 16px;
+  font-size: 1.08em;
+  margin-top: 1px;
+  
+  outline: none;
+  color: #000;
+  font-family: 'Arial', 'Segoe UI', Arial, sans-serif;
+ 
+}
+
+
+
+/* For optional icon in inputs: add a wrapper <div class="input-icon"> */
+.input-icon {
+  position: relative;
+}
+.input-icon svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  fill: #8cc8f8;
+  pointer-events: none;
+}
+.input-icon input {
+  padding-left: 38px !important;
+}
+
+.login-form button[type="submit"] {
+  margin-top: 15px;
+  padding: 13px 0;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #3a9dd6 0%, #5cb7ce 100%);
+  color: #243018;
+  font-size: 1.15em;
+  font-weight: 900;
+  cursor: pointer;
+  border: none;
+
+  letter-spacing: 0.2px;
+  transition: filter 0.2s, background 0.18s, color 0.18s;
+}
+
+
+.login-error {
+  color: #ff5252;
+  font-size: 1.05em;
+  min-height: 18px;
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.login-form button.secondary-btn {
+  background: linear-gradient(90deg, #323232 0%, #222 100%);
+  color: #eaff57;
+  border: 1.7px solid #030303;
+  font-size: 1.06em;
+  padding: 11px 0;
+  border-radius: 9px;
+  font-weight: 800;
+  width: 100%;
+  margin-top: 16px;
+  transition: background 0.18s, color 0.18s, border 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 8px #19191b22;
+  letter-spacing: 0.13em;
+}
+
+
+@media (max-width: 480px) {
+  .login-form {
+    min-width: unset;
+    padding: 24px 6vw 20px 6vw;
+    gap: 14px;
+  }
+  .login-overlay-title {
+    font-size: 1.35rem;
+    top: 20px;
+  }
+  .login-form h2 {
+    font-size: 1.1em;
+  }
+}
+
+/* === Dashboard KPIs === */
+
+/* === Headings === */
+h1, h2, h3 {
+  color: #030303;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 1.8em;            /* bigger than 1.5em */
+  margin-bottom: 8px;          /* less space */
+  text-align: center;          /* center the title */
+}
+
+h2 {
+  font-size: 1.2em;            /* smaller than 1.32em */
+  margin-bottom: 20px;         /* more space after subtitle */
+  text-align: center;          /* center the subtitle */
+  color: #141313;                 /* lighter color */
+  font-weight: 400;            /* lighter weight */
+}
+h3 {
+  font-size: 1.08em;
+}
+
+.dashboard-kpis {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+}
+.kpi-card {
+  background: #ffff;
+  padding: 18px 18px 12px 18px;
+  border-radius: 10px;
+  font-size: 1.18em;
+  color: #000;
+  min-width: 130px;
+  text-align: center;
+  font-weight: 400;
+  border: 1.5px solid #000000;
+  transition: background 0.13s, color 0.13s, border 0.13s;
+}
+.kpi-card.red { border-color: #b60202; color: #fff; background: #d11a1a;font-weight: 600; }
+.kpi-card.yellow { border-color: #b38021; color: #fff; background:#869932; font-weight: 600;}
+.kpi-card.orange { border-color: #ffff; color: #fff; background: #e67417; font-weight: 600;}
+
+/* === Modals === */
+.modal {
+  display: flex;
+  position: fixed;
+  z-index: 9001;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: #fff;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #a50505;
+  color: #000000;
+  border-radius: 15px;
+  padding: 42px 36px 34px 36px;
+  min-width: 320px;
+  max-width: 97vw;
+  box-shadow: 0 4px 32px rgba(255, 255, 255, 0.6);
+  font-size: 1em;
+  font-weight: 25;
+  position: relative;
+}
+@media (max-width: 600px) {
+  .modal-content { min-width: unset; width: 98vw; font-size: 1em; }
+}
+
+.modal-content button {
+  margin-top: 1.1em;
+}
+
+input[type="file"] {
+  padding: 0;
+}
+
+/* === Tooltip === */
+.tooltip {
+  position: fixed;
+  background: #ffff;
+  color: #23b9c4;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.98em;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 3px 14px #0007;
+  opacity: 0.98;
+}
+
+
+/* === Multiring Well Circles === */
+.well-multiring-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+}
+.well-multiring {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  margin: 10px;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  border-radius: 50%;
+  background: #1414a1;
+  box-shadow: 0 2px 12px #0007;
+}
+.well-multiring:hover {
+  transform: scale(1.13);
+  box-shadow: 0 2px 24px #ffff;
+  z-index: 2;
+}
+.well-label {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  left: 0;
+  text-align: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.08em;
+  transform: translateY(-50%);
+  pointer-events: none;
+  text-shadow: 0 1px 5px #000a;
+}
+
+
+
+
+
+/* === Card & Banner Styles === */
+.card, .dashboard-banner, .kpi-panel, .modal-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 14px rgba(145, 13, 13, 0.13);
+  padding: 28px 30px;
+  margin-bottom: 32px;
+}
+
+
+
+.kpi-panel {
+  background: #fff;
+  border: 1.5px solid #86d2f0;
+  color: #000;
+  box-shadow: 0 2px 16px #000a;
+}
+
+
+
+/* === Sidebar Navigation === */
+.main-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100vh;
+  background: #ffff;
+  border-right: 1px solid #222224;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding-top: 18px;
+  gap: 7px;
+}
+.main-menu button,
+.main-menu .sidebar-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 1.05em;
+  font-weight: 500;
+  padding: 11px 28px 11px 34px;
+  text-align: left;
+  border-radius: 6px 0 0 6px;
+  margin: 0 0 3px 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.main-menu button:hover,
+.main-menu .sidebar-link:hover {
+  background: #8acdec;
+  color: #f6f6f6;
+}
+
+
+.main-menu button.active, 
+.main-menu .sidebar-link.active {
+  background: #0ace55;
+  color: #eaff57;
+  font-weight: 600;
+}
+
+#logoutBtn {
+  margin-top: auto;
+  margin-bottom: 22px;
+  width: 80%;
+  align-self: center;
+  background: #fff;
+  color: #0c0d0e;
+  border: 0.5px solid #000000;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+
+
+
+
+
+
+
+/* === WELL SECTION RE-DESIGN (Image 1 Style) === */
+
+/* Well List Section */
+#wellsSection {
+  background: #fff;
+  color: #000;
+  padding: 0;
+}
+
+#wellsSection h1 {
+  margin-top: 0;
+  color: #000;
+  font-size: 2.05em;
+  margin-bottom: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+/* Well selection dropdown and wrapper */
+#wellList {
+  background: none;
+  padding: 0 0 0 0;
+  margin: 0 0 30px 0;
+}
+
+#wellDropdown {
+  background: #fff;
+  color: #000000;
+  border: 0.5px solid #070707;
+  border-radius: 7px;
+  padding: 10px 1px;
+  font-size: 1.09em;
+  font-weight: 500;
+  margin-left: 8px;
+  margin-bottom: 18px;
+  min-width: 215px;
+  transition: border 0.18s, background 0.16s;
+}
+#wellDropdown:focus {
+  border-color: #1b1b19;
+  outline: none;
+  background: #fff;
+}
+
+#wellList label {
+  font-size: 1.02em;
+  color: #0d0e0d;
+  font-weight: 600;
+}
+
+
+/* === Buttons & CTAs === */
+button,
+.btn,
+.primary-btn {
+  background: #fff;         /* blue instead of white */
+  color: #222121;                 /* white text */
+  border: 1px solid #2c2d2e;   /* matching border */
+  border-radius: 6px;
+  padding: 10px 20px;          /* more padding */
+  font-size: 0.9em;            /* smaller text */
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+
+button:hover,
+.primary-btn:hover {
+  background: #0056b3;         /* darker on hover */
+  border-color: #0056b3;
+}
+
+button.secondary-btn, .secondary-btn {
+  background: #6c757d;         /* gray instead of white */
+  color: #fff;
+  border: 1px solid #6c757d;
+}
+
+button.secondary-btn:hover, .secondary-btn:hover {
+  background: #545b62;
+  border-color: #545b62;
+}
+
+
+/* Admin: Create Well Button */
+#createWellBtn.primary-btn {
+  background: #fff;
+  color: #131414;
+  border: 1.5px solid #0f0f0f;
+  border-radius: 7px;
+  font-weight: 500;
+  font-size: 1.01em;
+  margin-bottom: 24px;
+  margin-top: 0;
+  transition: background 0.18s, color 0.18s;
+}
+
+.valve-panels-container {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+
+
+
+/* === WELL SECTION RE-DESIGN (IMPROVED SPACING) === */
+
+/* ... keep your existing CSS ... */
+
+/* --- Modal Height & Scroll Fix --- */
+#dispensationModal .modal-content,
+.modal-content {
+  max-height: 92vh;
+  overflow-y: auto;
+  min-width: 400px;
+  max-width: 540px;
+}
+@media (min-width: 900px) {
+  #dispensationModal .modal-content,
+  .modal-content {
+    max-width: 600px;
+    min-width: 420px;
+  }
+}
+
+#valveTestResultsPanel {
+  margin-left: 90px;
+  margin-top: 38px;
+  padding: 8px 12px;
+  font-size: 0.97em;
+  min-width: 320px;
+  max-width: 1000px;
+  background: #84b2d8;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px #0006;
+  border: 1.5px solid #23241f;
+  transition: margin 0.18s, box-shadow 0.18s;
+  /* Remove these lines to allow full table to show: */
+  /* max-height: 170px;
+  overflow-y: auto; */
+}
+
+#valveTestResultsPanel table {
+  font-size: 0.96em;
+  margin-bottom: 0;
+}
+
+#valveTestResultsPanel th, #valveTestResultsPanel td {
+  padding: 4px 8px;
+  line-height: 1.2;
+}
+
+#valveTestResultsPanel h3 {
+  font-size: 1.08em;
+  margin-bottom: 6px;
+  margin-top: 0;
+}
+
+
+/* --- Styles for Reports Section (Accordion Filters) --- */
+
+/* :root variables from previous response should still be here if you added them */
+/* e.g. --report-panel-bg, --report-input-bg, etc. */
+
+/* Ensure main section layout is correct */
+#reportsSection {
+  display: flex;
+  flex-direction: row;
+  gap: 400px;
+  padding: 20px;
+  color: var(--report-text-color, #020202); /* Ensure text color is set */
+}
+
+.report-controls-panel {
+  flex: 0 0 350px; /* Adjust width as needed */
+  background-color: var(--report-panel-bg, #fff);
+  border: 0.05px solid var(--report-panel-border, #fff);
+  border-radius: 40px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 100px); /* Adjust based on your header/nav height */
+}
+
+.report-panel-header {
+  background-color: var(--report-panel-header-bg, #fff);
+  padding: 25px 18px;
+  border-bottom: 1px solid var(--report-panel-border, #131414);
+}
+
+.report-panel-header h2 {
+  margin: 0;
+  font-size: 1.3em;
+  color: #0a0a0a;
+}
+
+.report-panel-body { /* This is now the accordion container */
+  padding: 10px; /* Reduced padding as groups will have their own */
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.accordion-group {
+  margin-bottom: 5px; /* Space between accordion groups */
+  border: 0.00005px solid var(--report-input-border, #0a0a0a);
+  border-radius: 6px;
+  overflow: hidden; /* Important for border-radius on children */
+  background-color: var(--report-panel-bg, #fff); /* Ensure bg for group */
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 15px;
+  background-color: var(--report-panel-header-bg, #ffff); /* Slightly different from item bg */
+  color: var(--report-group-title-color, #080808);
+  font-size: 1.1em;
+  font-weight: 500;
+  border: none;
+  /* border-bottom: 1px solid var(--report-input-border, #5c6168); remove if using full border on group */
+  cursor: pointer;
+  text-align: left;
+}
+
+
+.accordion-icon {
+  font-size: 1em;
+  font-weight: 00;
+  margin-left: 10px;
+  transition: transform 0.2s ease-in-out;
+}
+/* .accordion-group.open .accordion-icon { transform: rotate(45deg); } /* Example for X icon */
+
+
+.accordion-content {
+  padding: 15px;
+  background-color: var(--report-panel-bg, #fff); /* Match group background */
+  /* border-top: 1px solid var(--report-input-border, #5c6168); /* If header has no bottom border */
+  animation: fadeInContent 0.3s ease-out;
+}
+
+@keyframes fadeInContent {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; } /* Adjust max-height as needed */
+}
+.accordion-group:not(.open) .accordion-content {
+    /* display: none; -- Handled by JS for better animation control if needed */
+    /* but also good for no-JS fallback or initial state */
+    padding-top: 0;
+    padding-bottom: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out, opacity 0.2s ease-out;
+}
+.accordion-group.open .accordion-content {
+    max-height: 1000px; /* A large enough value */
+    opacity: 1;
+    transition: max-height 0.4s ease-in, padding 0.4s ease-in, opacity 0.3s ease-in;
+}
+
+
+.filter-item {
+  margin-bottom: 12px;
+}
+.filter-item:last-child {
+  margin-bottom: 0;
+}
+
+.filter-item label {
+  display: block;
+  font-size: 0.95em;
+  color: var(--report-label-color, #050505);
+  margin-bottom: 6px;
+}
+
+.filter-item select,
+.filter-item input[type="text"],
+.filter-item input[type="date"] {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--report-input-bg, #fff);
+  border: 1px solid var(--report-input-border, #191b1b);
+  border-radius: 5px;
+  color: var(--report-input-text-color, #111111);
+  font-size: 0.95em;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+
+
+.report-panel-footer {
+  padding: 15px 18px;
+  background-color: var(--report-panel-header-bg, #fff);
+  border-top: 0.5px solid var(--report-panel-border, #080808);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-action-btn {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 1.05em;
+  font-weight: 600;
+  border-radius: 5px;
+  border: 0.5px solid #080808;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  text-align: center;
+}
+/* ... (button styles .primary-btn, .secondary-btn remain the same) ... */
+/* --- Styles for Report Output Placeholder (Light Theme) --- */
+
+.report-output-area {
+  flex-grow: 1;
+  background-color: var(--report-section-bg); /* Should be white from theme */
+  padding: 20px;
+  border: 5px solid var(--report-panel-border);
+  border-radius: 8px;
+  /* --- Crucial for centering placeholder content --- */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  /* --- End crucial for centering --- */
+  overflow-y: auto; /* In case content (like table) becomes very long */
+  max-height: calc(100vh - 100px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.report-output-placeholder {
+  color: var(--report-label-color); /* Use a softer text color for placeholder */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  max-width: 500px; /* Give it some max width */
+}
+
+.report-output-placeholder .placeholder-icon {
+  color: var(--report-input-border); /* Even softer color for icon, or a light accent */
+  margin-bottom: 20px;
+  width: 60px; /* Adjust icon size */
+  height: 60px;
+}
+
+.report-output-placeholder .placeholder-text-main {
+  font-size: 1em; /* Larger main text */
+  font-weight: 400;
+  color: var(--report-text-color); /* Darker main text */
+  margin-bottom: 10px;
+}
+
+.report-output-placeholder .placeholder-text-sub {
+  font-size: 1em;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.report-output-placeholder .placeholder-text-detail {
+  font-size: 0.85em;
+  color: #6c757d; /* A slightly muted gray */
+}
+
+/* When a table is rendered, it will replace the placeholder.
+   If "No data found" message is shown by renderReportTable,
+   it will be inside a table structure. We might want to style that too. */
+.report-table td[colspan] { /* Specifically target the 'No data found' cell */
+  text-align: center;
+  padding: 40px 20px !important; /* Make it more prominent */
+  font-size: 1.1em;
+  color: var(--report-label-color);
+}
+
+
+
+
+
+
+  /*<!-- Valve Input Modal HTML/CSS -->  /*
+<!-- Sequential Valve Test Input Wizard Modal --> */
+
+  .valve-wizard-overlay {
+    position: fixed; top:0; left:0; width:80vw; height:80vh;
+    background: rgba(32,32,32,0.48); z-index: 5000; display: none; align-items: center; justify-content: center;
+  }
+  .valve-wizard-content {
+    min-width: 10px; max-width: 20vw;
+    border-radius: 18px;
+    box-shadow: 0 10px 40px 0 rgba(0,0,0,0.18);
+    background-color: #F0F8FF;
+    padding: 0;
+    overflow: auto;
+    position: relative;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #111;
+  }
+  .valve-wizard-header {
+    padding: 50px 14px 14px 4px;
+    font-size: 1.2em;
+    font-weight: 600;
+    background: #48b9f2;
+    display: flex; justify-content: space-between; align-items: center;
+    color: #111;
+    border-top-left-radius: 18px; border-top-right-radius: 18px;
+  }
+  .valve-wizard-close {
+    font-size: 2em; color: #333; background: none; border: none; cursor: pointer;
+    margin-left: 1em;
+  }
+  .wizard-progress-bar {
+    display: flex; gap: 3px; margin: 0 0 18px 0; padding: 0 24px;
+  }
+  .wizard-progress-bar span {
+    flex: 1;
+    height: 7px;
+    border-radius: 7px;
+    background: #e5e5ea;
+    transition: background 0.2s;
+  }
+  .wizard-progress-bar span.active {
+    background: #42a5f5;
+  }
+  .wizard-step {
+    display: none;
+    animation: fadeIn 0.3s;
+    padding: 0 24px 12px 24px;
+  }
+  .wizard-step.active {
+    display: block;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(14px);}
+    to { opacity: 1; transform: none;}
+  }
+  .step-title {
+    font-size: 1.1em;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: #1976d2;
+  }
+
+  /* IMPORTANT*/
+  label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 0;
+  }
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 7px 8px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    border: 0.01px solid #1d1212;
+    border-radius: 4px;
+    font-size: 1em;
+    color: #0a0909;
+    background: #fff;
+    box-sizing: border-box;
+  }
+
+  
+  .radio-group {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .wizard-buttons {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    padding: 0 24px 16px 24px;
+  }
+  .wizard-buttons button {
+    min-width: 90px;
+    padding: 8px 0;
+    border-radius: 6px;
+    font-size: 1em;
+    border: none;
+    cursor: pointer;
+    background: #007fe7;
+    color: #fff;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .wizard-buttons button.secondary {
+    background: #e0e0e0;
+    color: #444;
+  }
+  .wizard-buttons button:disabled {
+    background: #b3d2f8;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    color: #e53935;
+    font-size: 1em;
+    margin-bottom: 8px;
+    display: none;
+    padding: 0 24px;
+  }
+  .review-table {
+   
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .review-table th, .review-table td {
+    text-align: left;
+    color: #000;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .review-table th {
+    background: #f2faff;
+    font-weight: normal;
+    width: 45%;
+  }
+  @media (max-width: 600px) {
+    .valve-wizard-content {
+      min-width: unset;
+      width: 97vw;
+      border-radius: 9px;
+    }
+  }
+
+

@@ -1,0 +1,1597 @@
+/* === Global & Background === */
+
+
+
+#userWelcome {
+  color: #ababab;
+  font-size: 0.97em;
+  margin: 0 0 16px 36px;
+  line-height: 1.8em;
+}
+#logoutBtn {
+  margin-top: auto;
+  margin-bottom: 22px;
+  width: 80%;
+  align-self: center;
+  background: #19191b;
+  color: #eee;
+  border: 1px solid #23242b;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+#logoutBtn:hover {
+  background: #23241f;
+  color: #eaff57;
+}
+
+/* === Topbar (if needed) === */
+.topbar {
+  width: 100vw;
+  height: 56px;
+  background: #111112;
+  border-bottom: 1px solid #232425;
+  display: flex;
+  align-items: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 101;
+  padding-left: 230px;
+}
+.topbar .searchbar {
+  flex: 1;
+  background: #18191d;
+  border-radius: 8px;
+  margin: 0 22px 0 0;
+  height: 36px;
+  border: none;
+  color: #fff;
+  padding: 0 18px;
+  font-size: 1em;
+}
+.topbar .btn-create {
+  background: #eaff57;
+  color: #18191d;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  margin-left: 12px;
+  border: none;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+.topbar .btn-create:hover {
+  filter: brightness(1.07);
+}
+
+/* === Main Content === */
+main {
+  margin-left: 250px;
+  margin-top: 30px;
+  padding: 48px 38px 42px 38px;
+  min-height: 100vh;
+  background: #4b4bc7;
+  max-width: 1350px;
+}
+@media (max-width: 900px) {
+  main {
+    padding: 24px 4vw 18px 4vw;
+    margin-left: 0;
+  }
+  .main-menu {
+    position: static;
+    width: 100vw;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #222224;
+    padding: 0;
+    gap: 0;
+  }
+}
+
+/* === Headings === */
+h1, h2, h3 {
+  color: #fff;
+  font-weight: 700;
+  margin-top: 0;
+}
+h1 {
+  font-size: 2.05em;
+  margin-bottom: 18px;
+  letter-spacing: -1px;
+}
+h2 {
+  font-size: 1.32em;
+  margin-bottom: 12px;
+}
+h3 {
+  font-size: 1.08em;
+}
+
+
+.kpi-panel {
+  background: #161616;
+  border: 1.5px solid #23241f;
+  color: #eaff57;
+  box-shadow: 0 2px 16px #000a;
+}
+
+/* === Recent Project Cards (Dashboard) === */
+.dashboard-cards {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.dashboard-card {
+  background: #18191b;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.11);
+  padding: 20px 24px 18px 24px;
+  min-width: 250px;
+  min-height: 100px;
+  flex: 1 1 260px;
+  max-width: 320px;
+  color: #fff;
+  letter-spacing: 0.01em;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: box-shadow 0.16s, border 0.16s;
+  border: 1.5px solid #1c1d1b;
+  margin-bottom: 18px;
+}
+.dashboard-card .card-title {
+  font-size: 1.13em;
+  font-weight: bold;
+}
+.dashboard-card .card-meta {
+  font-size: 0.95em;
+  color: #c4c4c4;
+  margin-top: 10px;
+}
+
+/* === Buttons & CTAs === */
+button,
+.btn,
+.primary-btn {
+  background: #807777;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 22px;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+}
+button.secondary-btn, .secondary-btn {
+  background: #181a1c;
+  color: #eaff57;
+  border: 1.5px solid #eaff57;
+}
+button:hover, .btn:hover, .primary-btn:hover {
+  background: #2f2feb;
+  color: #eaff57;
+  border: 1.5px solid #eaff57;
+}
+button.secondary-btn:hover, .secondary-btn:hover {
+  background: #232325;
+  color: #fff;
+  border: 1.5px solid #eaff57;
+}
+
+.cta-btn {
+  background: #eaff57;
+  color: #1c1d1c;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: bold;
+  border: none;
+  padding: 8px 22px;
+  cursor: pointer;
+  transition: filter 0.14s;
+}
+.cta-btn:hover {
+  filter: brightness(1.06);
+}
+
+/* === Inputs, Selects, Textareas === */
+input, select, textarea {
+  background: #202024;
+  color: #fff;
+  border: 1.5px solid #23241f;
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  font-size: 1.01em;
+  transition: border 0.16s, background 0.16s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #eaff57;
+  outline: none;
+  background: #18191b;
+}
+
+input[type="file"] {
+  background: none;
+  color: #fff;
+  border: none;
+  margin-bottom: 0;
+}
+
+/* === Table Styles === */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #161617;
+  color: #f6f6f6;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+th, td {
+  border: 1.5px solid #222224;
+  padding: 13px 10px;
+}
+th {
+  background: #19191b;
+  color: #eaff57;
+  font-weight: 600;
+  font-size: 1.03em;
+}
+tr:nth-child(even) {
+  background: #232325;
+}
+tr:hover {
+  background: #222225;
+}
+
+
+/* FROM HERE TO THE BOTTOM IS GOOD
+/* === Modals === */
+.modal {
+  display: flex;
+  position: fixed;
+  z-index: 9001;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: rgba(8, 8, 8, 0.82);
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #18191b;
+  color: #fff;
+  border-radius: 14px;
+  padding: 42px 36px 34px 36px;
+  min-width: 320px;
+  max-width: 97vw;
+  box-shadow: 0 4px 32px #0009;
+  font-size: 1.09em;
+  position: relative;
+}
+@media (max-width: 600px) {
+  .modal-content { min-width: unset; width: 98vw; font-size: 1em; }
+}
+
+.modal-content button {
+  margin-top: 1.1em;
+}
+
+input[type="file"] {
+  padding: 0;
+}
+
+/* === Tooltip === */
+.tooltip {
+  position: fixed;
+  background: #232325;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.98em;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 3px 14px #0007;
+  opacity: 0.98;
+}
+
+/* === Dashboard KPIs === */
+.dashboard-kpis {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+}
+.kpi-card {
+  background: #18191b;
+  padding: 18px 18px 12px 18px;
+  border-radius: 10px;
+  font-size: 1.18em;
+  color: #fff;
+  min-width: 130px;
+  text-align: center;
+  font-weight: 600;
+  border: 1.5px solid #23241f;
+  transition: background 0.13s, color 0.13s, border 0.13s;
+}
+.kpi-card.red { border-color: #e64a3a; color: #e64a3a; background: #191415; }
+.kpi-card.yellow { border-color: #eaff57; color: #eaff57; background: #19191b; }
+.kpi-card.orange { border-color: #ff9800; color: #ff9800; background: #1c1812; }
+
+/* === Multiring Well Circles === */
+.well-multiring-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+}
+.well-multiring {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  margin: 10px;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  border-radius: 50%;
+  background: #19191b;
+  box-shadow: 0 2px 12px #0007;
+}
+.well-multiring:hover {
+  transform: scale(1.13);
+  box-shadow: 0 2px 24px #000;
+  z-index: 2;
+}
+.well-label {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  left: 0;
+  text-align: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  transform: translateY(-50%);
+  pointer-events: none;
+  text-shadow: 0 1px 5px #000a;
+}
+
+
+/* === Responsive Table Wrapper === */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+.table-responsive table {
+  min-width: 900px;
+}
+
+/* === Responsive Table for Mobile === */
+@media (max-width: 700px) {
+  .main-menu { width: 100vw; position: static; flex-direction: row; height: auto; }
+  main { margin-left: 0; padding: 22px 6vw 14px 6vw; }
+  .card, .dashboard-banner, .kpi-panel, .modal-content { padding: 18px 8px; }
+}
+
+@media (max-width: 600px) {
+  .dashboard-cards { flex-direction: column; gap: 18px; }
+  .modal-content { width: 98vw; font-size: 0.96em; }
+  .main-menu { font-size: 0.95em; padding: 8px 0 8px 0; }
+  .dashboard-kpis { gap: 10px; }
+  .well-multiring-board { gap: 12px; }
+}
+
+/* === Hide scrollbars for sidebar === */
+.main-menu {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #232325 #0c0c0e;
+}
+.main-menu::-webkit-scrollbar {
+  width: 7px;
+  background: #0c0c0e;
+}
+.main-menu::-webkit-scrollbar-thumb {
+  background: #232325;
+}
+
+/* === Miscellaneous === */
+::-webkit-scrollbar {
+  background: #181818;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #222224;
+}
+
+
+/* === WELL SECTION RE-DESIGN (Image 1 Style) === */
+
+/* Well List Section */
+#wellsSection {
+  background: #0c0c0e;
+  color: #f6f6f6;
+  padding: 0;
+}
+
+#wellsSection h1 {
+  margin-top: 0;
+  color: #fff;
+  font-size: 2.05em;
+  margin-bottom: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+/* Well selection dropdown and wrapper */
+#wellList {
+  background: none;
+  padding: 0 0 0 0;
+  margin: 0 0 30px 0;
+}
+
+#wellDropdown {
+  background: #da6868;
+  color: #7a3333;
+  border: 1.5px solid #a9d300;
+  border-radius: 7px;
+  padding: 10px 1px;
+  font-size: 1.09em;
+  font-weight: 600;
+  margin-left: 8px;
+  margin-bottom: 18px;
+  min-width: 215px;
+  transition: border 0.18s, background 0.16s;
+}
+#wellDropdown:focus {
+  border-color: #eaff57;
+  outline: none;
+  background: #19191b;
+}
+
+#wellList label {
+  font-size: 1.02em;
+  color: #eaff57;
+  font-weight: 600;
+}
+
+/* Admin: Create Well Button */
+#createWellBtn.primary-btn {
+  background: #18191b;
+  color: #eaff57;
+  border: 1.5px solid #eaff57;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 1.01em;
+  margin-bottom: 24px;
+  margin-top: 0;
+  transition: background 0.18s, color 0.18s;
+}
+#createWellBtn.primary-btn:hover {
+  background: #232325;
+  color: #fff;
+  border: 1.5px solid #eaff57;
+}
+
+.valve-panels-container {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+/* === Global & Background === */
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #0c0c0e;
+  color: #f6f6f6;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+a, a:visited {
+  color: #b6baf4;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: #fff;
+}
+
+/* === Sidebar Navigation === */
+.main-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100vh;
+  background: #111114;
+  border-right: 1px solid #222224;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding-top: 18px;
+  gap: 7px;
+}
+.main-menu button,
+.main-menu .sidebar-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #e3e3e3;
+  font-size: 1.08em;
+  font-weight: 500;
+  padding: 11px 28px 11px 34px;
+  text-align: left;
+  border-radius: 6px 0 0 6px;
+  margin: 0 0 3px 0;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.main-menu button:hover,
+.main-menu .sidebar-link:hover {
+  background: #222225;
+  color: #f6f6f6;
+}
+.main-menu button.active,
+.main-menu .sidebar-link.active {
+  background: #23241f;
+  color: #eaff57;
+  font-weight: 600;
+}
+#userWelcome {
+  color: #ababab;
+  font-size: 0.97em;
+  margin: 0 0 16px 36px;
+  line-height: 1.8em;
+}
+#logoutBtn {
+  margin-top: auto;
+  margin-bottom: 22px;
+  width: 80%;
+  align-self: center;
+  background: #19191b;
+  color: #eee;
+  border: 1px solid #23242b;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+#logoutBtn:hover {
+  background: #23241f;
+  color: #eaff57;
+}
+
+/* === Topbar (if needed) === */
+.topbar {
+  width: 100vw;
+  height: 56px;
+  background: #111112;
+  border-bottom: 1px solid #232425;
+  display: flex;
+  align-items: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 101;
+  padding-left: 230px;
+}
+.topbar .searchbar {
+  flex: 1;
+  background: #18191d;
+  border-radius: 8px;
+  margin: 0 22px 0 0;
+  height: 36px;
+  border: none;
+  color: #fff;
+  padding: 0 18px;
+  font-size: 1em;
+}
+.topbar .btn-create {
+  background: #eaff57;
+  color: #18191d;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
+  margin-left: 12px;
+  border: none;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: filter 0.18s;
+}
+.topbar .btn-create:hover {
+  filter: brightness(1.07);
+}
+
+/* === Main Content === */
+main {
+  margin-left: 250px;
+  margin-top: 30px;
+  padding: 48px 38px 42px 38px;
+  min-height: 100vh;
+  background: #0c0c0e;
+  max-width: 1350px;
+}
+@media (max-width: 900px) {
+  main {
+    padding: 24px 4vw 18px 4vw;
+    margin-left: 0;
+  }
+  .main-menu {
+    position: static;
+    width: 100vw;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #222224;
+    padding: 0;
+    gap: 0;
+  }
+}
+
+/* === Headings === */
+h1, h2, h3 {
+  color: #fff;
+  font-weight: 700;
+  margin-top: 0;
+}
+h1 {
+  font-size: 2.05em;
+  margin-bottom: 18px;
+  letter-spacing: -1px;
+}
+h2 {
+  font-size: 1.32em;
+  margin-bottom: 12px;
+}
+h3 {
+  font-size: 1.08em;
+}
+
+/* === Card & Banner Styles === */
+.card, .dashboard-banner, .kpi-panel, .modal-content {
+  background: #030303;
+  border-radius: 12px;
+  box-shadow: 0 2px 14px rgba(145, 13, 13, 0.13);
+  padding: 28px 30px;
+  margin-bottom: 32px;
+}
+
+
+
+.kpi-panel {
+  background: #161616;
+  border: 1.5px solid #23241f;
+  color: #ffff;
+  box-shadow: 0 2px 16px #000a;
+}
+
+
+/* === Buttons & CTAs === */
+
+button.secondary-btn, .secondary-btn {
+  background: #fff;
+  color: #1a8cb9;
+  border: 1.5px solid #ffff;
+}
+
+button.secondary-btn:hover, .secondary-btn:hover {
+  background: #050505;
+  color: #fff;
+  border: 1.5px solid #eaff57;
+}
+
+
+/* === Modals === */
+.modal {
+  display: flex;
+  position: fixed;
+  z-index: 9001;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: rgba(174, 218, 231, 0.82);
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #9ed4f8;
+  color: #ffff;
+  border-radius: 44px;
+  padding: 42px 36px 34px 36px;
+  min-width: 320px;
+  max-width: 97vw;
+  box-shadow: 0 4px 32px rgba(255, 255, 255, 0.6);
+  font-size: 1.19em;
+  font-weight: 300;
+  position: relative;
+}
+@media (max-width: 600px) {
+  .modal-content { min-width: unset; width: 98vw; font-size: 1em; }
+}
+
+.modal-content button {
+  margin-top: 1.1em;
+}
+
+input[type="file"] {
+  padding: 0;
+}
+
+/* === Tooltip === */
+.tooltip {
+  position: fixed;
+  background: #ffff;
+  color: #23b9c4;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.98em;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 3px 14px #0007;
+  opacity: 0.98;
+}
+
+/* === Dashboard KPIs === */
+.dashboard-kpis {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+}
+.kpi-card {
+  background: #ffff;
+  padding: 18px 18px 12px 18px;
+  border-radius: 10px;
+  font-size: 1.18em;
+  color: #428fbb;
+  min-width: 130px;
+  text-align: center;
+  font-weight: 600;
+  border: 1.5px solid #ffff;
+  transition: background 0.13s, color 0.13s, border 0.13s;
+}
+.kpi-card.red { border-color: #ffff; color: #fc513e; background: #ffff;font-weight: 600; }
+.kpi-card.yellow { border-color: #ffff; color: #cae22f; background:#ffff; font-weight: 600;}
+.kpi-card.orange { border-color: #ffff; color: #ff9800; background: #ffff; font-weight: 600;}
+
+/* === Multiring Well Circles === */
+.well-multiring-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+}
+.well-multiring {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  margin: 10px;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  border-radius: 50%;
+  background: #1414a1;
+  box-shadow: 0 2px 12px #0007;
+}
+.well-multiring:hover {
+  transform: scale(1.13);
+  box-shadow: 0 2px 24px #ffff;
+  z-index: 2;
+}
+.well-label {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  left: 0;
+  text-align: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.08em;
+  transform: translateY(-50%);
+  pointer-events: none;
+  text-shadow: 0 1px 5px #000a;
+}
+
+/* === Login Overlay === */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+.login-overlay {
+  position: fixed;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: linear-gradient(135deg, #aae1fa 0%, #79b5e9 100%);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-overlay-title {
+  position: absolute;
+  top: 75px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+  z-index: 1;
+  pointer-events: none;
+  text-shadow: 0 4px 24px #fff8;
+  filter: drop-shadow(0 2px 12px #8ec6f9);
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-form {
+  background: rgba(255,255,255,0.75);
+  padding: 48px 44px 40px 44px;
+  border-radius: 22px;
+  box-shadow: 0 8px 40px #6fbeff44, 0 2px 24px #0001;
+  min-width: 350px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border: 1.5px solid #eaff57;
+  position: relative;
+  backdrop-filter: blur(14px) saturate(120%);
+  animation: fadeInScale2 0.7s cubic-bezier(.6,1.5,.25,1) 1;
+  transition: box-shadow 0.3s;
+}
+
+@keyframes fadeInScale2 {
+  from { opacity: 0; transform: scale(0.93);}
+  to   { opacity: 1; transform: scale(1);}
+}
+
+.login-form h2 {
+  margin: 0 0 20px 0;
+  color: #163047;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  font-size: 1.65em;
+  text-shadow: 0 1px 0 #fff8, 0 1px 8px #eaff57aa;
+}
+
+.login-form label {
+  font-size: 1.03em;
+  color: #3579b6;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-weight: 700;
+  transition: color 0.2s;
+  margin-bottom: 4px;
+  letter-spacing: 0.03em;
+}
+
+.login-form label:focus-within {
+  color: #1766a0;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  background: rgba(244,251,254,0.95);
+  border: 1.7px solid #b8e6fc;
+  border-radius: 13px;
+  padding: 12px 16px;
+  font-size: 1.08em;
+  margin-top: 1px;
+  transition: border 0.23s, box-shadow 0.18s;
+  outline: none;
+  color: #1b3554;
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+  box-shadow: 0 1.5px 8px #eaff5733 inset;
+}
+
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus {
+  border: 2px solid #4ec6ff;
+  box-shadow: 0 0 0 1.5px #b8f3ff77;
+}
+
+/* For optional icon in inputs: add a wrapper <div class="input-icon"> */
+.input-icon {
+  position: relative;
+}
+.input-icon svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  fill: #8cc8f8;
+  pointer-events: none;
+}
+.input-icon input {
+  padding-left: 38px !important;
+}
+
+.login-form button[type="submit"] {
+  margin-top: 15px;
+  padding: 13px 0;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #3a9dd6 0%, #5cb7ce 100%);
+  color: #243018;
+  font-size: 1.15em;
+  font-weight: 900;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 12px #eaff5755;
+  letter-spacing: 0.2px;
+  transition: filter 0.2s, background 0.18s, color 0.18s;
+}
+
+.login-form button[type="submit"]:hover {
+  filter: brightness(1.07) drop-shadow(0 2px 10px #ffffe0a0);
+  background: linear-gradient(90deg, #f5f4df 0%, #fff 100%);
+  color: #1b3554;
+}
+
+.login-error {
+  color: #ff5252;
+  font-size: 1.05em;
+  min-height: 18px;
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.login-form button.secondary-btn {
+  background: linear-gradient(90deg, #323232 0%, #222 100%);
+  color: #eaff57;
+  border: 1.7px solid #eaff57;
+  font-size: 1.06em;
+  padding: 11px 0;
+  border-radius: 9px;
+  font-weight: 800;
+  width: 100%;
+  margin-top: 16px;
+  transition: background 0.18s, color 0.18s, border 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 8px #19191b22;
+  letter-spacing: 0.13em;
+}
+
+.login-form button.secondary-btn:hover {
+  background: linear-gradient(90deg, #faff7e 0%, #fff13a 100%);
+  color: #1b3554;
+  border: 1.6px solid #1b3554;
+  box-shadow: 0 4px 14px #eaff5740;
+}
+
+@media (max-width: 480px) {
+  .login-form {
+    min-width: unset;
+    padding: 24px 6vw 20px 6vw;
+    gap: 14px;
+  }
+  .login-overlay-title {
+    font-size: 1.35rem;
+    top: 20px;
+  }
+  .login-form h2 {
+    font-size: 1.1em;
+  }
+}
+/* === Responsive Table Wrapper === */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+.table-responsive table {
+  min-width: 900px;
+}
+
+/* === Responsive Table for Mobile === */
+@media (max-width: 700px) {
+  .main-menu { width: 100vw; position: static; flex-direction: row; height: auto; }
+  main { margin-left: 0; padding: 22px 6vw 14px 6vw; }
+  .card, .dashboard-banner, .kpi-panel, .modal-content { padding: 18px 8px; }
+}
+
+@media (max-width: 600px) {
+  .dashboard-cards { flex-direction: column; gap: 18px; }
+  .modal-content { width: 98vw; font-size: 0.96em; }
+  .main-menu { font-size: 0.95em; padding: 8px 0 8px 0; }
+  .dashboard-kpis { gap: 10px; }
+  .well-multiring-board { gap: 12px; }
+}
+
+/* === Hide scrollbars for sidebar === */
+.main-menu {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #232325 #0c0c0e;
+}
+.main-menu::-webkit-scrollbar {
+  width: 7px;
+  background: #0c0c0e;
+}
+.main-menu::-webkit-scrollbar-thumb {
+  background: #232325;
+}
+
+/* === Miscellaneous === */
+::-webkit-scrollbar {
+  background: #181818;
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #222224;
+}
+
+
+/* === WELL SECTION RE-DESIGN (Image 1 Style) === */
+
+/* Well List Section */
+
+#wellsSection h1 {
+  margin-top: 0;
+  color: #fff;
+  font-size: 2.05em;
+  margin-bottom: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+/* Well selection dropdown and wrapper */
+#wellList {
+  background: none;
+  padding: 0 0 0 0;
+  margin: 0 0 30px 0;
+}
+
+#wellDropdown {
+  background: #18191b;
+  color: #ffff;
+  border: 1.5px solid #23241f;
+  border-radius: 7px;
+  padding: 10px 18px;
+  font-size: 1.09em;
+  font-weight: 600;
+  margin-left: 8px;
+  margin-bottom: 18px;
+  min-width: 215px;
+  transition: border 0.18s, background 0.16s;
+}
+#wellDropdown:focus {
+  border-color: #eaff57;
+  outline: none;
+  background: #19191b;
+}
+
+#wellList label {
+  font-size: 1.02em;
+  color: #eaff57;
+  font-weight: 600;
+}
+
+/* Admin: Create Well Button */
+#createWellBtn.primary-btn {
+  background: #18191b;
+  color: #eaff57;
+  border: 1.5px solid #ff578f;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 1.01em;
+  margin-bottom: 24px;
+  margin-top: 0;
+  transition: background 0.18s, color 0.18s;
+}
+#createWellBtn.primary-btn:hover {
+  background: #232325;
+  color: #fff;
+  border: 1.5px solid #ffff;
+}
+
+/* === WELL SECTION RE-DESIGN (IMPROVED SPACING) === */
+
+/* ... keep your existing CSS ... */
+
+/* --- Modal Height & Scroll Fix --- */
+#dispensationModal .modal-content,
+.modal-content {
+  max-height: 92vh;
+  overflow-y: auto;
+  min-width: 400px;
+  max-width: 540px;
+}
+@media (min-width: 900px) {
+  #dispensationModal .modal-content,
+  .modal-content {
+    max-width: 600px;
+    min-width: 420px;
+  }
+}
+
+/* --- Valve Test Results Panel: Remove max height and scrolling --- */
+#valveTestResultsPanel {
+  margin-left: 90px;
+  margin-top: 38px;
+  padding: 8px 12px;
+  font-size: 0.97em;
+  min-width: 320px;
+  max-width: 1000px;
+  background: #161617;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px #0006;
+  border: 1.5px solid #23241f;
+  transition: margin 0.18s, box-shadow 0.18s;
+  /* Remove these lines to allow full table to show: */
+  /* max-height: 170px;
+  overflow-y: auto; */
+}
+
+#valveTestResultsPanel table {
+  font-size: 0.96em;
+  margin-bottom: 0;
+}
+
+#valveTestResultsPanel th, #valveTestResultsPanel td {
+  padding: 4px 8px;
+  line-height: 1.2;
+}
+
+#valveTestResultsPanel h3 {
+  font-size: 1.08em;
+  margin-bottom: 6px;
+  margin-top: 0;
+}
+
+
+/* --- Styles for Reports Section (Accordion Filters) --- */
+
+/* :root variables from previous response should still be here if you added them */
+/* e.g. --report-panel-bg, --report-input-bg, etc. */
+
+/* Ensure main section layout is correct */
+#reportsSection {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 15px;
+  color: var(--report-text-color, #f0f0f0); /* Ensure text color is set */
+}
+
+.report-controls-panel {
+  flex: 0 0 350px; /* Adjust width as needed */
+  background-color: var(--report-panel-bg, #282c34);
+  border: 1px solid var(--report-panel-border, #444851);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 100px); /* Adjust based on your header/nav height */
+}
+
+.report-panel-header {
+  background-color: var(--report-panel-header-bg, #3a3f47);
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--report-panel-border, #444851);
+}
+
+.report-panel-header h2 {
+  margin: 0;
+  font-size: 1.3em;
+  color: #fff;
+}
+
+.report-panel-body { /* This is now the accordion container */
+  padding: 10px; /* Reduced padding as groups will have their own */
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.accordion-group {
+  margin-bottom: 5px; /* Space between accordion groups */
+  border: 1px solid var(--report-input-border, #5c6168);
+  border-radius: 6px;
+  overflow: hidden; /* Important for border-radius on children */
+  background-color: var(--report-panel-bg, #282c34); /* Ensure bg for group */
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 12px 15px;
+  background-color: var(--report-panel-header-bg, #3a3f47); /* Slightly different from item bg */
+  color: var(--report-group-title-color, #ffe257);
+  font-size: 1.1em;
+  font-weight: 600;
+  border: none;
+  /* border-bottom: 1px solid var(--report-input-border, #5c6168); remove if using full border on group */
+  cursor: pointer;
+  text-align: left;
+}
+.accordion-group.open .accordion-header {
+  /* Optional: style for open header, e.g., different background */
+  /* background-color: #4f555e; */
+}
+
+
+.accordion-icon {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-left: 10px;
+  transition: transform 0.2s ease-in-out;
+}
+/* .accordion-group.open .accordion-icon { transform: rotate(45deg); } /* Example for X icon */
+
+
+.accordion-content {
+  padding: 15px;
+  background-color: var(--report-panel-bg, #282c34); /* Match group background */
+  /* border-top: 1px solid var(--report-input-border, #5c6168); /* If header has no bottom border */
+  animation: fadeInContent 0.3s ease-out;
+}
+
+@keyframes fadeInContent {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; } /* Adjust max-height as needed */
+}
+.accordion-group:not(.open) .accordion-content {
+    /* display: none; -- Handled by JS for better animation control if needed */
+    /* but also good for no-JS fallback or initial state */
+    padding-top: 0;
+    padding-bottom: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out, opacity 0.2s ease-out;
+}
+.accordion-group.open .accordion-content {
+    max-height: 1000px; /* A large enough value */
+    opacity: 1;
+    transition: max-height 0.4s ease-in, padding 0.4s ease-in, opacity 0.3s ease-in;
+}
+
+
+.filter-item {
+  margin-bottom: 12px;
+}
+.filter-item:last-child {
+  margin-bottom: 0;
+}
+
+.filter-item label {
+  display: block;
+  font-size: 0.95em;
+  color: var(--report-label-color, #b0b8c5);
+  margin-bottom: 6px;
+}
+
+.filter-item select,
+.filter-item input[type="text"],
+.filter-item input[type="date"] {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: var(--report-input-bg, #3a3f47);
+  border: 1px solid var(--report-input-border, #5c6168);
+  border-radius: 5px;
+  color: var(--report-input-text-color, #e0e0e0);
+  font-size: 0.95em;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-item select:focus,
+.filter-item input[type="text"]:focus,
+.filter-item input[type="date"]:focus {
+  border-color: var(--report-primary-btn-bg, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.filter-item select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23B0B8C5%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); /* Lighter arrow */
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 10px;
+  padding-right: 30px;
+}
+
+
+.report-panel-footer {
+  padding: 15px 18px;
+  background-color: var(--report-panel-header-bg, #3a3f47);
+  border-top: 1px solid var(--report-panel-border, #444851);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-action-btn {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 1.05em;
+  font-weight: 600;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  text-align: center;
+}
+/* ... (button styles .primary-btn, .secondary-btn remain the same) ... */
+/* --- Styles for Report Output Placeholder (Light Theme) --- */
+
+.report-output-area {
+  flex-grow: 1;
+  background-color: var(--report-section-bg); /* Should be white from theme */
+  padding: 20px;
+  border: 1px solid var(--report-panel-border);
+  border-radius: 8px;
+  /* --- Crucial for centering placeholder content --- */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  /* --- End crucial for centering --- */
+  overflow-y: auto; /* In case content (like table) becomes very long */
+  max-height: calc(100vh - 100px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.report-output-placeholder {
+  color: var(--report-label-color); /* Use a softer text color for placeholder */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  max-width: 500px; /* Give it some max width */
+}
+
+.report-output-placeholder .placeholder-icon {
+  color: var(--report-input-border); /* Even softer color for icon, or a light accent */
+  margin-bottom: 20px;
+  width: 60px; /* Adjust icon size */
+  height: 60px;
+}
+
+.report-output-placeholder .placeholder-text-main {
+  font-size: 1.4em; /* Larger main text */
+  font-weight: 500;
+  color: var(--report-text-color); /* Darker main text */
+  margin-bottom: 10px;
+}
+
+.report-output-placeholder .placeholder-text-sub {
+  font-size: 1em;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.report-output-placeholder .placeholder-text-detail {
+  font-size: 0.85em;
+  color: #6c757d; /* A slightly muted gray */
+}
+
+/* When a table is rendered, it will replace the placeholder.
+   If "No data found" message is shown by renderReportTable,
+   it will be inside a table structure. We might want to style that too. */
+.report-table td[colspan] { /* Specifically target the 'No data found' cell */
+  text-align: center;
+  padding: 40px 20px !important; /* Make it more prominent */
+  font-size: 1.1em;
+  color: var(--report-label-color);
+}
+
+
+
+:root {
+  --main-blue: #81b2da;        /* Panel and border blue */
+  --main-white: #fff;
+}
+
+/* Blue panel background for the results box */
+#valveTestResultsPanel {
+  background: var(--main-blue) !important;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: none;
+  padding: 0;
+}
+
+/* Panel title in blue panel */
+.panel-title {
+  background: transparent !important;
+  color: var(--main-white) !important;
+  margin: 0;
+  padding: 18px 24px 12px 24px;
+
+  border-radius: 14px 14px 0 0;
+  border-bottom: none;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size: 24px;
+  font-family: Arial, sans-serif;
+  color: #81b2da; 
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+
+/* Table inside the blue panel */
+.results-accordion-table {
+  background: var(--main-white) !important;
+  width: 100%;
+  border-collapse: collapse; /* IMPORTANT for visible internal borders */
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Table headers */
+.results-accordion-table th {
+  background: var(--main-blue) !important;
+  color: var(--main-white) !important;
+  font-weight: 700;
+  padding: 12px 15px;
+  border: 2px solid var(--main-blue) !important;
+}
+
+/* Data cells and visible blue borders */
+.results-accordion-table td {
+  color: var(--main-blue) !important;
+  background: var(--main-white) !important;
+  border: 2px solid var(--main-blue) !important;
+  padding: 10px 15px;
+}
+
+/* Collapse/expand cell on the left */
+.results-accordion-table td.expand-cell {
+  background: var(--main-blue) !important;
+  color: var(--main-white) !important;
+  width: 40px;
+  text-align: center;
+  border: 2px solid var(--main-blue) !important;
+  border-right: none !important;
+  padding: 0;
+}
+
+/* Chevron or icon in left cell */
+.details-icon {
+  font-size: 1.3em;
+  color: var(--main-white) !important;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+/* Details rows (if any, e.g. expanded) */
+.valve-details-accordion-row td.details-content-cell {
+  background: var(--main-white) !important;
+  color: var(--main-blue) !important;
+  border: 2px solid var(--main-blue) !important;
+  padding: 12px 15px !important;
+}
+
+.details-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 32px; /* space between items, adjust as you like */
+  align-items: center;
+}
+/* Bottom area around the button */
+.well-deviation-action {
+  background: var(--main-blue) !important;
+  padding: 24px 0 20px 0;
+  border-radius: 0 0 14px 14px;
+  text-align: center;
+  margin-top: 0;
+}
+
+/* The button: white background, blue border and text, inverts on hover */
+.well-deviation-action .primary-btn {
+  background: var(--main-white) !important;
+  color: var(--main-blue) !important;
+  padding: 12px 30px;
+  font-size: 1.1em;
+  border-radius: 8px;
+  border: 2px solid var(--main-blue);
+  font-weight: bold;
+  transition: background 0.2s, color 0.2s;
+}
+.well-deviation-action .primary-btn:hover {
+  background: var(--main-blue) !important;
+  color: var(--main-white) !important;
+  border: 2px solid var(--main-white);
+}
+
+/* Remove panel border if any */
+#valveTestResultsPanel {
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+
+:root {
+  --app-bg: #9ed4f8;              /* Overall app background */
+  --sidebar-bg: #ffff;          /* Sidebar navigation */
+  --topbar-bg: #c52828;           /* Topbar */
+  --main-bg: #9ed4f8;                /* Main content area */
+  --card-bg: #9ed4f8;             /* Cards, dashboard cards, KPI panels */
+ /* Dashboard banner */
+             /* Modal dialogs */
+}
+:root {
+  --sidebar-text: #5e727a;
+}
+.main-menu,
+.main-menu button {
+  color: var(--sidebar-text);
+}
+.sidebar {
+  color: var(--sidebar-text);
+}
+/* Apply variables to each app section */
+body {
+  background: var(--app-bg);
+}
+
+.main-menu {
+  background: var(--sidebar-bg);
+}
+
+.topbar {
+  background: var(--topbar-bg);
+}
+
+main {
+  background: var(--main-bg);
+}
+
+.card,
+.wells-card
+.dashboard-card,
+.kpi-panel {
+  background: var(--card-bg);
+}
+
+
+
+
+
+
+:root {
+  --table-bg: #ffff;
+  --table-header-bg: #ccf79b;
+  --table-row-alt-bg: #b88e8e;
+  --table-cell-bg: #09d692;
+}
+
+table {
+  background: var(--table-bg);
+  color: #c51e8e;
+}
+
+th {
+  background: var(--table-header-bg);
+}
+
+tr:nth-child(even) {
+  background: var(--table-row-alt-bg);
+}
+
+td {
+  background: var(--table-cell-bg);
+}
+
+:root {
+  --wells-section-bg:#9ed4f8
+}
+
+#wellsSection {
+  background: var(--wells-section-bg);
+}
+

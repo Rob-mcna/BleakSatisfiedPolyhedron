@@ -335,7 +335,7 @@ button:hover {
   background: transparent;
 }
 .primary-btn.add-well svg {
-  stroke: ;
+  stroke: #000;
 }
 .maasp-error-table {
   width: 100%;
@@ -514,65 +514,4 @@ button:hover {
   background: #333;
   color: #aaa;
   cursor: not-allowed;
-}
-
-/* Pagination Controls */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 18px;
-  margin: 17px 0 5px 0;
-}
-.pagination button {
-  padding: 5px 14px;
-  font-size: 16px;
-  border-radius: 5px;
-  border: none;
-  background: #222;
-  color: #7fffd4;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.pagination button:disabled {
-  background: #333;
-  color: #aaa;
-  cursor: not-allowed;
-}
-
-.actions-dropdown {
-  position: relative;
-  display: inline-block;
-}
-.actions-dropdown > button {
-  padding: 3px 12px;
-  border-radius: 5px;
-  border: none;
-  background: #222;
-  color: #7fffd4;
-  cursor: pointer;
-}
-.actions-menu {
-  min-width: 140px;
-  background: #222;
-  color: #fff;
-  display: none;
-  position: absolute;
-  right: 0;
-  top: 100%;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px #0007;
-}
-.actions-menu button {
-  width: 100%;
-  padding: 6px 12px;
-  border: none;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  font-size: 14px;
-}
-.actions-menu button:hover {
-  background: #444;
 }

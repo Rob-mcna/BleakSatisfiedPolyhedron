@@ -1,70 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta charset="UTF-8">
   <title>Well Integrity Management Tool</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .modal {
-      position: fixed; z-index: 1000; left: 0; top: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
-    }
-    .modal-content {
-      background: #000 !important;
-      color: #fff !important;
-      border-radius: 5px;
-      padding: 24px;
-      min-width: 300px;
-      max-width: 90vw;
-      box-shadow: 0 4px 32px #0004;
-    }
-    .modal-content button {
-      margin-top: 1em;
-    }
-    .special-badge { color: gold; font-size: 1.2em; margin-left: 4px; }
-    #wellsSection table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 1em;
-    }
-    #wellsSection th, #wellsSection td {
-      border: 1px solid #ccc;
-      padding: 8px 12px;
-      text-align: left;
-    }
-    #wellsSection th {
-      background: #222;
-      color: #fff;
-    }
-    #wellsSection tr:nth-child(even) {
-      background: #181818;
-    }
-    #wellsSection tr:nth-child(odd) {
-      background: #111;
-    }
-    #wellsSection tr:hover {
-      background: #2d2d2d;
-    }
-    @media (max-width: 600px) {
-      .modal-content { min-width: unset; width: 96vw; font-size: 1em; }
-      #wellsSection table, #wellsSection th, #wellsSection td { font-size: 0.92em; }
-    }
-    .gallery-block { margin-bottom:18px; }
-    .gallery-label { font-weight:bold; margin-bottom:6px; }
-    .gallery-preview { display:flex; gap:12px; flex-wrap:wrap; min-height:32px; margin: 4px 0 8px 0;}
-    .schematic-preview img { max-width:220px; max-height:140px; border:2px solid #888; border-radius:6px; }
-    .photos-preview img { max-width:100px; max-height:70px; border:2px solid #888; border-radius:6px; }
-    .gallery-preview .gallery-thumb-wrap { position:relative; display:inline-block; }
-    .gallery-preview .remove-thumb { position:absolute; top:3px; right:3px; background:#fff; border:1px solid #d33; color:#d33; border-radius:50%; width:22px; height:22px; cursor:pointer; font-size:17px; text-align:center; }
-    .gallery-dropzone { border:2px dashed #aaa; padding:10px; border-radius:8px; color:#888; text-align:center; margin-top:7px; font-size:14px; cursor:pointer; }
-    .gallery-dropzone.dragover { border-color:#1976d2; color:#1976d2; background:#f7fafd; }
-  </style>
+
+  <!-- jsPDF Core Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- jsPDF-AutoTable Plugin - THIS MUST BE AFTER jspdf.umd.min.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="stylesheet" href="src/css/style1.css">
+ 
 </head>
 <body>
   <!-- Login/Signup Overlay -->
   <div id="loginOverlay" class="login-overlay">
+      <div class="login-overlay-title">Welcome to the Well Integrity Management Tool</div>
     <!-- Login Form -->
     <form id="loginForm" class="login-form" autocomplete="off">
       <h2>Sign In</h2>
@@ -116,57 +71,68 @@
   <!-- Main Content -->
   <main>
     <!-- Dashboard -->
-    <section id="dashboardSection">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>Asset Wells Integrity Status</h1>
-        <button id="showKPIDashboardBtn" class="secondary-btn">KPIs & Actions</button>
-      </div>
-      <div class="dashboard-filters">
-        <select id="filterCountry"><option value="">All Countries</option><option>Country A</option><option>Country B</option><option>Country C</option></select>
-        <select id="filterField"><option value="">All Fields</option><option>Field 1</option><option>Field 2</option><option>Field 3</option></select>
-        <select id="filterPlatform"><option value="">All Platforms</option><option>Platform X</option><option>Platform Y</option><option>Platform Z</option></select>
-        <select id="filterStatus">
-          <option value="">All Statuses</option>
-          <option value="Red">Red</option>
-          <option value="Orange">Orange</option>
-          <option value="Yellow">Yellow</option>
-          <option value="Green">Green</option>
-        </select>
-      </div>
-      <div class="dashboard-kpis">
-        <div class="kpi-card">Wells: <span id="kpiWells">12</span></div>
-        <div class="kpi-card red">Red: <span id="kpiRed">2</span></div>
-        <div class="kpi-card orange">Orange: <span id="kpiOrange">2</span></div>
-        <div class="kpi-card yellow">Yellow: <span id="kpiYellow">2</span></div>
-        <div class="kpi-card">Pending Repairs: <span id="kpiRepairs">3</span></div>
-        <div class="kpi-card">Active Deviations: <span id="kpiDeviations">1</span></div>
-      </div>
-      <div class="well-multiring-board" id="wellMultiRingBoard"></div>
-      <!-- KPI/Action Dashboard Panel -->
-      <div id="kpiDashboardPanel" class="kpi-panel">
-        <h2>KPIs & Upcoming Actions</h2>
-        <ul class="kpi-action-list">
-          <li><b>Next Well Integrity Test:</b> Well-2 - 2025-05-22</li>
-          <li><b>Repairs to be Completed:</b> Well-1 (Valve), Well-5 (Sensor)</li>
-          <li><b>Dispensation Next to Expire:</b> Well-4 - 2025-06-01</li>
-        </ul>
-        <button id="closeKPIDashboardBtn" class="secondary-btn">Close</button>
-      </div>
-    </section>
-
+  <!-- Dashboard -->
+<section id="dashboardSection">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <h1>Asset Wells Integrity Status</h1>
+    <button id="showKPIDashboardBtn" class="secondary-btn">KPIs & Actions</button>
+  </div>
+  <div class="dashboard-filters">
+    <select id="filterCountry"><option value="">All Countries</option><option>Country A</option><option>Country B</option><option>Country C</option></select>
+    <select id="filterField"><option value="">All Fields</option><option>Field 1</option><option>Field 2</option><option>Field 3</option></select>
+    <select id="filterPlatform"><option value="">All Platforms</option><option>Platform X</option><option>Platform Y</option><option>Platform Z</option></select>
+    <select id="filterStatus">
+      <option value="">All Statuses</option>
+      <option value="Red">Red</option>
+      <option value="Orange">Orange</option>
+      <option value="Yellow">Yellow</option>
+      <option value="Green">Green</option>
+    </select>
+  </div>
+  
+  <!-- KPI Cards - MODIFIED INITIAL VALUES -->
+  <div class="dashboard-kpis">
+    <div class="kpi-card">Wells: <span id="kpiWells">-</span></div>
+    <div class="kpi-card red">Red: <span id="kpiRed">-</span></div>
+    <div class="kpi-card orange">Orange: <span id="kpiOrange">-</span></div>
+    <div class="kpi-card yellow">Yellow: <span id="kpiYellow">-</span></div>
+    <div class="kpi-card">Pending Repairs: <span id="kpiRepairs">-</span></div>
+    <div class="kpi-card">Active Deviations: <span id="kpiDeviations">-</span></div>
+  </div>
+  
+  <!-- 6-Ring Well Dashboard -->
+  <div class="well-multiring-board" id="wellMultiRingBoard"></div>
+  
+  <!-- KPI/Action Dashboard Panel -->
+  <div id="kpiDashboardPanel" class="kpi-panel">
+    <h2>KPIs & Upcoming Actions</h2>
+    <ul class="kpi-action-list">
+      <li><b>Next Well Integrity Test:</b> Well-2 - 2025-05-22</li>
+      <li><b>Repairs to be Completed:</b> Well-1 (Valve), Well-5 (Sensor)</li>
+      <li><b>Dispensation Next to Expire:</b> Well-4 - 2025-06-01</li>
+    </ul>
+    <button id="closeKPIDashboardBtn" class="secondary-btn">Close</button>
+  </div>
+</section>
     
     <!-- Wells -->
-    <section id="wellsSection" style="display:none;">
-      <h1>Wells Management</h1>
-      <div id="wellList"></div>
-      <!-- Well Details Modal -->
-      <div id="wellDetailsModal" class="modal" style="display:none;">
-        <div class="modal-content" id="wellDetailsModalContent"></div>
-      </div>
-      <button class="primary-btn" onclick="showIdentificationFormModal()">New Identification Form</button>
-      <div id="testHistory"></div>
-      <div id="maintenanceBacklog"></div>
-      <div id="pressureTrends"></div>
+    <!-- Wells -->
+<section id="wellsSection" style="display:none;">
+  <h1>Wells Management</h1>
+  <div id="wellList"></div>
+  <button class="primary-btn" onclick="showIdentificationFormModal()">New Identification Form</button>
+  
+  <div class="well-layout" id="wellInlineLayout" style="display:none;">
+  <div id="wellSchematicArea"></div>
+  <div class="valve-panels-container">
+    <div id="valveInputPanel"></div>
+    <div id="valveTestResultsPanel"></div>
+  </div>
+</div>
+  
+  <div id="testHistory"></div>
+  <div id="maintenanceBacklog"></div>
+  <div id="pressureTrends"></div>
       <!-- Identification Form Modal (hidden by default) -->
       <div id="identificationFormModal" class="modal" style="display:none;">
         <div class="modal-content" style="min-width:350px;max-width:99vw;">
@@ -249,46 +215,46 @@
       <div id="dispensationModal" class="modal" style="display:none;">
         <div class="modal-content" style="min-width:350px;max-width:99vw;">
           <h3 id="dispensationModalTitle">New Dispensation / Deviation</h3>
-          <form id="dispensationForm" enctype="multipart/form-data">
-            <label>Type:
-              <select name="type" id="dispType" required>
-                <option value="dispensation">Dispensation</option>
-                <option value="deviation">Deviation</option>
-              </select>
-            </label><br>
-            <label>Associated Identification Form:
-              <select name="identificationForm" id="dispIdentificationForm" required>
-                <!-- Options populated dynamically -->
-              </select>
-            </label><br>
-            <label>Related Integrity Test Form:
-              <select name="integrityTestForm" id="dispIntegrityTestForm">
-                <!-- Options populated dynamically -->
-              </select>
-              <button type="button" id="openIntegrityTestBtn" style="margin-left:8px;">Open Test Form</button>
-            </label><br>
-            <label>Title:
-              <input type="text" name="title" id="dispTitle" required>
-            </label><br>
-            <label>Description:
-              <textarea name="description" id="dispDescription" required></textarea>
-            </label><br>
-            <label>Risk Assessment:
-              <select name="riskOption" id="riskAssessmentOption">
-                <option value="fill">Fill Assessment</option>
-                <option value="upload">Upload Document</option>
-              </select>
-            </label><br>
-            <div id="riskAssessmentFields">
-              <!-- Dynamically show risk form or file input -->
+          <form id="deviationForm" enctype="multipart/form-data" style="max-width:650px;">
+            <div style="margin-bottom:10px;">
+              <label><input type="radio" name="deviationAction" value="deviation" checked> Raise Deviation Only</label>
+              <label style="margin-left:22px;"><input type="radio" name="deviationAction" value="dispensation"> Raise Deviation &amp; Request Dispensation</label>
             </div>
-            <label>Valid Until:
-              <input type="date" name="validUntil" id="dispValidUntil" required>
-            </label><br>
-            <div id="dispensationApprovals">
-              <!-- Approval workflow UI here -->
+            <!-- Basic fields for both -->
+            <label>Title: <input type="text" id="dispTitle" required></label>
+            <label>Description: <textarea id="dispDescription" required></textarea></label>
+            <label>Valid Until: <input type="date" id="dispValidUntil" required></label>
+            <!-- Dispensation fields block (hidden unless dispensation is selected) -->
+            <div id="dispensationFieldsBlock" style="display:none; margin-top:14px; padding:12px; background:#18191b; border-radius:7px;">
+              <h4 style="color:#ffe257;margin-bottom:6px;">Dispensation Details</h4>
+              <label>Requested By: <input type="text" id="requestedByField" required></label>
+              <label>Date: <input type="date" id="requestDateField" required></label>
+              <label>Location: <input type="text" id="locationField" required></label>
+              <label>Organization: <input type="text" id="organizationField" required></label>
+              <label>Deviation from Procedure - Titled: <input type="text" id="deviationTitleField" required></label>
+              <label>Deviation No.: <input type="text" id="deviationNoField" required></label>
+              <label>Reason for Deviating from Procedure:
+                <textarea id="deviationReasonField" required></textarea>
+                <input type="file" id="deviationAttachmentField" accept="image/*,application/pdf">
+              </label>
+              <label>Controls (Safeguards) Proposed:
+                <textarea id="controlsField" required></textarea>
+              </label>
+              <label>Authorization Valid Until: <input type="date" id="validUntilField" required></label>
+              <label>Authorization Date: <input type="date" id="authorizationDateField" required></label>
+              <label>Conditions of Deviation: <textarea id="deviationConditionsField"></textarea></label>
+              <label>Ops Manager's Comments: <textarea id="opsCommentsField"></textarea></label>
+              <label>HES Manager's Signature: <input type="text" id="hesManagerSignatureField" placeholder="Signature">
+                <input type="text" id="hesManagerNameField" placeholder="Printed Name">
+                <input type="date" id="hesManagerDateField">
+              </label>
+              <label>Resident Manager's Comments: <textarea id="residentCommentsField"></textarea></label>
+              <label>Resident Manager's Signature: <input type="text" id="residentManagerSignatureField" placeholder="Signature">
+                <input type="text" id="residentManagerNameField" placeholder="Printed Name">
+                <input type="date" id="residentManagerDateField">
+              </label>
             </div>
-            <button type="submit" id="saveDispensationBtn">Save</button>
+            <button type="submit" id="saveDeviationBtn">Submit</button>
             <button type="button" onclick="closeDispensationModal()">Cancel</button>
           </form>
         </div>
@@ -324,249 +290,184 @@
       <div id="usersUI"></div>
     </section>
   </main>
-  <!-- Valve Input Modal HTML/CSS -->
 
-  <style>
-    .valve-modal-overlay {
-      position: fixed; top:0; left:0; width:100vw; height:100vh;
-      background: rgba(32,32,32,0.48); z-index: 5000; display: none; align-items: center; justify-content: center;
-    }
-    .valve-modal-content {
-      min-width: 860px; max-width: 98vw; min-height: 350px; max-height: 80vh;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px 0 rgba(0,0,0,0.18);
-      background-color: #F0F8FF;
-      padding: 0;
-      overflow: auto;
-      position: relative;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      color: #111;
-    }
-    .valve-modal-header {
-      padding: 16px 24px 14px 24px;
-      font-size: 1.2em;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      background: #48b9f2;
-      display: flex; justify-content: space-between; align-items: center;
-      color: #111;
-    }
-    .valve-modal-close {
-      font-size: 2em; color: #333; background: none; border: none; cursor: pointer;
-      margin-left: 1em;
-    }
-
-    .valve-modal-form-table {
-      border-collapse: collapse;
-      width: 100%;
-      background: inherit;
-      border: 2px solid #000;
-      margin-bottom: 0;
-    }
-    .valve-modal-form-table th,
-    .valve-modal-form-table td {
-      border: 1px solid #000;
-      padding: 3px 4px;
-      font-size: 0.92em;
-      text-align: center;
-      color: #111;
-      background: #fff;
-    }
-    .valve-modal-form-table th {
-      font-weight: bold;
-      background: #fff;
-      position: relative;
-    }
-    .valve-modal-form-table th.group-header {
-      font-size: 1.08em;
-      font-weight: bold;
-      text-align: center;
-      background: #fff;
-      border-bottom: 2px solid #000;
-    }
-    .valve-modal-form-table th .subtitle {
-      font-size: 0.8em;
-      font-weight: normal;
-      display: block;
-    }
-    .valve-modal-form-table thead tr:last-child th,
-    .valve-modal-form-table thead tr:last-child td {
-      background: #e6f6fc;
-      font-weight: bold;
-      font-size: 0.98em;
-      color: #111;
-    }
-
-    .valve-modal-form-table input,
-    .valve-modal-form-table select {
-      min-width: 0;
-      max-width: 100%;
-      margin: 0;
-      box-sizing: border-box;
-      color: #111 !important;
-      background: #ffffff !important;
-      border: 1px solid #1976d2;
-      font-size: 0.92em;
-    }
-    .valve-modal-form-table input:read-only {
-      background: #ffffff !important;
-      color: #111 !important;
-    }
-    .valve-modal-form-table select option {
-      color: #111 !important;
-      background: #fff;
-    }
-    .valve-modal-error {
-      color: #d50;
-      font-weight: 500;
-      padding: 4px 15px 8px 20px;
-      min-height: 20px;
-    }
-    .valve-modal-footer {
-      display: flex; justify-content: flex-end; gap: 16px; margin: 18px 24px 18px 0;
-    }
-    .valve-modal-btn {
-      font-size: 1em; padding: 8px 22px; border: none; border-radius: 6px; font-weight: 500; cursor: pointer;
-      background: #1976d2; color: #ffffff; transition: background 0.2s;
-    }
-    .valve-modal-btn:disabled { background: #bbb; cursor: not-allowed; }
-    .valve-modal-form-table label { color: #111; }
-    /* For improved ID cell styling */
-    .id-label {
-      font-size: 0.93em;
-      font-weight: normal;
-      color: #444;
-    }
-  </style>
-  <div id="valveModal" class="valve-modal-overlay">
-    <div class="valve-modal-content" id="valveModalContent">
-      <div class="valve-modal-header">
-        <span id="valveModalTitle">Valve Test Input</span>
-        <button class="valve-modal-close" onclick="closeValveModal()">&times;</button>
-      </div>
-      <form id="valveTestForm" autocomplete="off" onsubmit="saveValveTest(event)">
-        <div class="valve-modal-error" id="valveModalError"></div>
-        <div style="text-align:center; font-size:1.23em; font-weight:bold; margin-top:10px; margin-bottom:6px;">
-          Initial Testing Conditions
-        </div>
-        <table class="valve-modal-form-table">
-          <thead>
-            <tr>
-              <th>Valve Tested for Integrity</th>
-              <th>Monitoring Time</th>
-              <th>Maximum Internal Leak Rate <span class="subtitle">(NTE: 15)</span></th>
-              <th>Initial Pressure</th>
-              <th>Initial Temperature</th>
-              <th colspan="10" class="group-header">Valves Position During Testing</th>
-              <th>External Leak</th>
-              <th>Closing Time</th>
-              <th>Control Line &amp; Actuator Seals Leak</th>
-              <th>Closed Stem Length</th>
-            </tr>
-            <tr>
-              <th>ID</th>
-              <th>min</th>
-              <th>scf/min</th>
-              <th>psig</th>
-              <th>Deg F</th>
-              <th>SCSSV</th>
-              <th>MMV</th>
-              <th>HMV</th>
-              <th>SV</th>
-              <th>2SV</th>
-              <th>TC</th>
-              <th>MWV</th>
-              <th>HWV</th>
-              <th>CV</th>
-              <th>HDVs</th>
-              <th>Yes/No</th>
-              <th>Secs</th>
-              <th>Yes/No</th>
-              <th>in</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <input name="id" id="field-id" type="text" readonly style="width: 100px; margin-bottom:3px;">
-              </td>
-              <td><input name="monitoringTime" id="field-monitoringTime" type="number" min="0" required style="width: 60px;"></td>
-              <td><input name="maxInternalLeakRate" id="field-maxInternalLeakRate" type="text" required style="width: 80px;"></td>
-              <td><input name="initialPressure" id="field-initialPressure" type="number" min="0" required style="width: 60px;"></td>
-              <td><input name="initialTemp" id="field-initialTemp" type="number" min="0" required style="width: 60px;"></td>
-              <!-- Valve positions -->
-              <td><select name="vp_SCSSV" id="field-vp_SCSSV" required style="width:82px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_MMV" id="field-vp_MMV" required style="width:82px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_HMV" id="field-vp_HMV" required style="width:82px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_SV" id="field-vp_SV" required style="width:82px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_2SV" id="field-vp_2SV" required style="width:82px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_TC" id="field-vp_TC" required style="width:42px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_MWV" id="field-vp_MWV" required style="width:42px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_HWV" id="field-vp_HWV" required style="width:42px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_CV" id="field-vp_CV" required style="width:42px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <td><select name="vp_HDVs" id="field-vp_HDVs" required style="width:42px;">
-                <option value="">-</option>
-                <option value="O">O</option>
-                <option value="C">C</option>
-              </select></td>
-              <!-- External Leak -->
-              <td>
-                <label><input type="radio" name="externalLeak" value="Yes" required style="margin: 0 2px 0 0; transform: scale(0.85);">Yes</label>
-                <label><input type="radio" name="externalLeak" value="No" required style="margin: 0 2px 0 0; transform: scale(0.85);">No</label>
-              </td>
-              <td><input name="closingTime" id="field-closingTime" type="number" min="0" required style="width: 60px;"></td>
-              <!-- Actuator Seals & Control Line Leak -->
-              <td>
-                <label><input type="radio" name="asclLeak" value="Yes" required style="margin: 0 2px 0 0; transform: scale(0.85);">Yes</label>
-                <label><input type="radio" name="asclLeak" value="No" required style="margin: 0 2px 0 0; transform: scale(0.85);">No</label>
-              </td>
-              <td><input name="closedStemLength" id="field-closedStemLength" type="text" required style="width: 60px;"></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="valve-modal-footer">
-          <button type="button" class="valve-modal-btn" onclick="closeValveModal()">Cancel</button>
-          <button type="submit" class="valve-modal-btn">Save</button>
-        </div>
-      </form>
+<div id="valveWizardModal" class="valve-wizard-overlay">
+  <div class="valve-wizard-content" id="valveWizardContent">
+    <div class="valve-wizard-header">
+      <span id="valveWizardTitle">Valve Test Input</span>
+      <button class="valve-wizard-close" onclick="closeValveWizard()">&times;</button>
     </div>
+    <form id="valveWizardForm" autocomplete="off" onsubmit="submitValveWizard(event)">
+      <div class="wizard-progress-bar" id="wizardWizardProgress"></div>
+      <div class="error-msg" id="wizardWizardError"></div>
+      
+      <!-- Step 1: Valve Identification -->
+      <div class="wizard-step" data-step="1">
+        <div class="step-title">Valve Identification</div>
+        <label>Valve ID
+          <input type="text" id="wizValveId" name="valveId" value="HWV" readonly>
+        </label>
+        <label>Valve Type
+          <input type="text" id="wizValveType" name="valveType" value="Hydraulic Wing Valve" readonly>
+        </label>
+      </div>
+      <!-- Step 2: Initial Testing Conditions -->
+      <div class="wizard-step" data-step="2">
+        <div class="step-title">Initial Testing Conditions</div>
+        <label>Monitoring Time (min)
+          <input type="number" min="0" id="wizMonitoringTime" name="monitoringTime" required>
+        </label>
+        <label>Maximum Internal Leak Rate (scf/min)
+          <input type="number" min="0" step="0.01" id="wizMaxInternalLeakRate" name="maxInternalLeakRate" required>
+        </label>
+        <label>Initial Pressure (psig)
+          <input type="number" min="0" id="wizInitialPressure" name="initialPressure" required>
+        </label>
+        <label>Initial Temperature (°F)
+          <input type="number" id="wizInitialTemp" name="initialTemp" required>
+        </label>
+      </div>
+      <!-- Step 3: Valve Positions During Testing -->
+      <div class="wizard-step" data-step="3">
+        <div class="step-title">Valve Positions During Testing</div>
+        <label>SCSSV
+          <select id="wizVp_SCSSV" name="vp_SCSSV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+       
+          </select>
+        </label>
+        <label>MMV
+          <select id="wizVp_MMV" name="vp_MMV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+      
+          </select>
+        </label>
+        <label>HMV
+          <select id="wizVp_HMV" name="vp_HMV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+        
+          </select>
+        </label>
+        <label>SV
+          <select id="wizVp_SV" name="vp_SV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+          
+          </select>
+        </label>
+        <label>2SV
+          <select id="wizVp_2SV" name="vp_2SV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+          
+          </select>
+        </label>
+        <label>TC
+          <select id="wizVp_TC" name="vp_TC" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+         
+          </select>
+        </label>
+        <label>MWV
+          <select id="wizVp_MWV" name="vp_MWV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+         
+          </select>
+        </label>
+        <label>HWV
+          <select id="wizVp_HWV" name="vp_HWV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+         
+          </select>
+        </label>
+        <label>CV
+          <select id="wizVp_CV" name="vp_CV" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+            
+          </select>
+        </label>
+        <label>HDVs
+          <select id="wizVp_HDVs" name="vp_HDVs" required>
+            <option value="">Select</option>
+            <option value="O">Open</option>
+            <option value="C">Closed</option>
+         
+          </select>
+        </label>
+      </div>
+      <!-- Step 4: External Factors & Timing -->
+      <div class="wizard-step" data-step="4">
+        <div class="step-title">External Factors & Timing</div>
+        <label>External Leak
+          <div class="radio-group">
+            <label><input type="radio" name="externalLeak" value="Yes" required> Yes</label>
+            <label><input type="radio" name="externalLeak" value="No" required> No</label>
+          </div>
+        </label>
+        <label>Closing Time (secs)
+          <input type="number" min="0" id="wizClosingTime" name="closingTime" required>
+        </label>
+        <label>Control Line & Actuator Seals Leak
+          <div class="radio-group">
+            <label><input type="radio" name="asclLeak" value="Yes" required> Yes</label>
+            <label><input type="radio" name="asclLeak" value="No" required> No</label>
+          </div>
+        </label>
+        <label>Closed Stem Length (in)
+          <input type="number" min="0" step="0.01" id="wizClosedStemLength" name="closedStemLength" required>
+        </label>
+      </div>
+      <!-- Step 5: Review & Submit -->
+      <div class="wizard-step" data-step="5">
+        <div class="step-title">Review & Submit</div>
+        <table class="review-table" id="wizardReviewTable"></table>
+        <div style="color: #444; font-size: 0.95em; margin-bottom: 8px;">
+          Please review all your answers before submitting.
+        </div>
+      </div>
+      <div class="wizard-buttons">
+        <button type="button" id="wizardBackBtn" class="secondary" onclick="valveWizardBack()">Back</button>
+        <button type="button" id="wizardNextBtn" onclick="valveWizardNext()">Next</button>
+        <button type="submit" id="wizardSubmitBtn" style="display:none;">Submit</button>
+      </div>
+    </form>
   </div>
-  <script src="script.js"></script>
+</div>
+  
+
+
+
+
+  <script src="src/js/login.js"></script>
+
+  <script src="src/js/dashboard.js"></script>
+  <script src="src/js/datasection.js"></script>
+  <script src="src/js/deviations.js"></script>
+ 
+  <script src="src/js/reportsection.js"></script>
+  <script src="src/js/userssection.js"></script>
+
+  <script src="src/js/wellsection.js"></script>
+  <script src="src/js/render_functions.js"></script>
+  <script src="src/js/delete_tests.js"></script>
+  <script src="src/js/modals.js"></script>
+
+  
 </body>
 </html>
