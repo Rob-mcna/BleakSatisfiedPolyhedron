@@ -309,14 +309,12 @@ function renderValveTestResultsPanel(currentWellId) {
   let html = `<div class="panel-title" style="color: ${mainWhite}; padding: 18px 24px 12px 24px; text-transform: uppercase; font-weight: bold; font-size: 24px; font-family: Arial, sans-serif; text-align: center; letter-spacing: 1px;">Valve Test Results</div>`;
   html += `<div class="valve-entries-container" style="padding: 15px 20px;">`;
 
-  // FIXED: Only include valves that actually have test data
+  // Only include valves that actually have test data
   const valveIdsWithActualTests = [];
   
   for (const valveId in resultsForWell) {
     const testsHistoryForValve = resultsForWell[valveId];
     let hasValidTests = false;
-    console.log(testsHistoryForValve)
-    
     if (Array.isArray(testsHistoryForValve) && testsHistoryForValve.length > 0) {
       // Check if array has actual test objects (not just empty array)
       hasValidTests = testsHistoryForValve.some(test => 
@@ -326,7 +324,6 @@ function renderValveTestResultsPanel(currentWellId) {
       // Check if single test object has content
       hasValidTests = Object.keys(testsHistoryForValve).length > 0;
     }
-    
     if (hasValidTests) {
       valveIdsWithActualTests.push(valveId);
     }
@@ -425,7 +422,31 @@ function renderValveTestResultsPanel(currentWellId) {
         html += `  </div>`;
       }
 
+      // === Well Failure Model Matrix Integration (WFM) ===
       const isFail = currentTestToShow && (!currentTestToShow.pass || !currentTestToShow.test_valid || !currentTestToShow.leak_rate_pass);
+      if (isFail && typeof window.wellFailureModel !== "undefined") {
+        // Get the valve's short name (domain logic: use getValveNameById or similar)
+        const valveName = getValveNameById(valveId);
+        // Map to failure matrix category/number (edit getFailureCategoryAndNumber for your domain)
+        const mapping = getFailureCategoryAndNumber(valveName, currentTestToShow.failure_reasons);
+        if (mapping) {
+          const well = (window.wells || []).find(w => w.id === currentWellId);
+          const wellType = (well && well.type) ? well.type.replace(/ /g, '').toLowerCase() : "naturalflow";
+          const code = window.wellFailureModel.getFailureCode(mapping.category, mapping.number, wellType);
+          if (code !== null && code !== undefined) {
+            const mitigation = window.wellFailureModel.getMitigatingAction(code);
+            const trafficColor = mitigation ? mitigation.trafficLight : 'gray';
+            html += `
+              <div class="valve-failure-model-info" style="margin-top:10px;padding:10px 15px;background:rgba(255,255,0,0.06);border-left:5px solid ${trafficColor};border-radius:4px;">
+                <b>Failure Code:</b> ${code}<br>
+                <b>Mitigation:</b> ${mitigation ? mitigation.description : 'N/A'}<br>
+                <b>Status:</b> <span style="color:${trafficColor};font-weight:bold;">${trafficColor.toUpperCase()}</span>
+              </div>
+            `;
+          }
+        }
+      }
+
       if (isFail) {
         // FIX #5: Enhanced deviation context
         if (!window._richDeviationContext) window._richDeviationContext = {};

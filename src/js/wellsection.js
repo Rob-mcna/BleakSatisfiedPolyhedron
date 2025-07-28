@@ -678,6 +678,5 @@ function findValveNameById(valveId) {
 window.showValveInputPanel = showValveInputPanel;
 
 window.exportTestData = exportTestData;
-window.fetchWellsAndInitialize = fetchWellsAndInitialize;
 window.openDeviationFromWell = openDeviationFromWell;
 window.updateDashboardAfterTest = updateDashboardAfterTest;
