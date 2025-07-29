@@ -1,5 +1,5 @@
 // =================== Well Failure Model Matrix Implementation ===================
-
+window.activeEscalations = window.activeEscalations || [];
 // --- Only define globals if not already defined ---
 window.valveConversions = window.valveConversions || {
   SV: "Swab Valve",
@@ -464,6 +464,25 @@ function getLiveStatusForAllRings(well) {
     return [];
   }
 
+
+  // --- ESCALATION INTEGRATION START ---
+  // Only escalate if there are failures and not already escalated for this well in this session
+  if (
+    failedValves.length > 0 &&
+    !window.activeEscalations.some(ec => ec.issue && ec.issue.well === well.name && ec.status === "pending")
+  ) {
+    // You can choose which failed valve to escalate (here: the first one)
+    const firstFailed = failedValves[0];
+    window.triggerValveFailureEscalation({
+      well,
+      valve: firstFailed.valveLabel,
+      details: firstFailed.failureReason,
+      leadEngineer: window.currentUser ? window.currentUser.login : "Unknown"
+    });
+    // Optionally: show a message or UI indicator that escalation was triggered
+    console.log(`Escalation triggered for well ${well.name}, valve ${firstFailed.valveLabel}.`);
+  }
+  // --- ESCALATION INTEGRATION END ---
   // Determine matrix condition and get failure code
   const wellType = getWellTypeKey(well.type);
   let matrixCategory = '';
@@ -510,6 +529,9 @@ function getLiveStatusForAllRings(well) {
   });
 
   return rings;
+
+  
+
 }
 
 // Helper function to convert well type to matrix key
