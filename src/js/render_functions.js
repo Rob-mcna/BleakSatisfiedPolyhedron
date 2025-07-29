@@ -137,7 +137,7 @@ async function renderWellSchematicAndPanel(wellId) {
   // --- Schematic Loading Logic ---
   const schematicPath = wellConfig.christmasTree && wellConfig.christmasTree.schematic;
   if (schematicPath) {
-    const fullSchematicURL = `http://10.226.14.79:5000${schematicPath}`;
+    const fullSchematicURL = `http://10.226.112.214:5000${schematicPath}`;
     wellSchematicArea.innerHTML = `<div class="loading-schematic">Loading schematic...</div>`;
     try {
       const response = await fetch(fullSchematicURL);
@@ -155,7 +155,7 @@ async function renderWellSchematicAndPanel(wellId) {
   // --- Fetch all valves and make them available ---
   let allValves = [];
   try {
-    const valvesResponse = await fetch("http://10.226.14.79:5000/api/valves/");
+    const valvesResponse = await fetch("http://10.226.112.214:5000/api/valves/");
     if (valvesResponse.ok) {
       allValves = await valvesResponse.json();
       window.allValves = allValves; // Make globally accessible

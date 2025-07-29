@@ -104,23 +104,12 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
   panel.classList.add('active');
   window.currentValvePanel = currentValveId; // Store the unique ID
 
-  let savedFormData = {};
-  try {
-    // NOTE: This API endpoint uses the valve NAME. This might be a backend constraint.
-    const formDataResponse = await fetch(`http://10.226.14.79:5000/api/integrity_test/form_data?well=${currentWellId}&valve=${currentValveId}`);
-    if (formDataResponse.ok) {
-      savedFormData = await formDataResponse.json();
-    }
-  } catch (error) {
-    console.error(`Error fetching saved form data for ${currentWellId}/${valveName}:`, error);
-  }
-
-  const valveLimits = VALVE_LIMITS[valveName] || { monitoring_time: "", critical_rate: "" };
+ 
 
   let validBlockingValves = [];
   try {
     // NOTE: This API endpoint also uses the valve NAME.
-    const response = await fetch(`http://10.226.14.79:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
+    const response = await fetch(`http://10.226.112.214:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
     if (response.ok) {
       const data = await response.json();
       
@@ -142,7 +131,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         <button type="button" class="accordion-toggle" data-index="${i}">${section.title}</button>
         <div class="accordion-panel" style="display:${i === 0 ? "block" : "none"};">`;
     section.fields.forEach(field => {
-      let val = savedFormData[field.name] || "";
+      let val = "";
       
       // ==================================================================
       // CORRECTED LOGIC: Use the ID for 'valveId' field
@@ -272,7 +261,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
 
            try {
         // STEP 1: Fetch raw calculated data from the backend
-        const response = await fetch('http://10.226.14.79:5000/api/integrity_test/', {
+        const response = await fetch('http://10.226.112.214:5000/api/integrity_test/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(apiPayload)
@@ -583,7 +572,7 @@ async function exportTestData(wellId) {
 
 async function refreshWellDataFromAPI(wellId = null) {
   try {
-    const response = await fetch('http://10.226.14.79:5000/api/wells/');
+    const response = await fetch('http://10.226.112.214:5000/api/wells/');
     if (!response.ok) {
       return false;
     }
@@ -592,7 +581,7 @@ async function refreshWellDataFromAPI(wellId = null) {
     window.wells = wellsData;
     
     if (wellId) {
-      const testResultsResponse = await fetch(`http://10.226.14.79:5000/api/integrity_test/results?well=${wellId}`);
+      const testResultsResponse = await fetch(`http://10.226.112.214:5000/api/integrity_test/results?well=${wellId}`);
       if (testResultsResponse.ok) {
         // Data refreshed - no need to store in localStorage
       }

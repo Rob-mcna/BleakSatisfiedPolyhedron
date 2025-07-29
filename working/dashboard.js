@@ -105,6 +105,97 @@ window.mitigatingActions = window.mitigatingActions || {
   9: { color: "red", description: "Make well safe immediately and plan repair / test / suspension / abandonment. Make well safe may be carried out by repairing defect at initial visit to well.", trafficLight: "orange" },
   10: { color: "red", description: "Implement installation/field Emergency Response procedures immediately, make well safe at earliest opportunity and plan repair / suspension / abandonment.", trafficLight: "red" }
 };
+
+// Enhanced valve classification based on the matrix
+window.valveClassification = window.valveClassification || {
+  surfaceValves: [
+    'UMGV', 'PMV', 'AMV', 'FWV', 'PWV', 'AWV', 'LMGV', 
+    'SWAB', 'KWV', 'MIV', 'CIV', 'AXOV', 'XOV', 'SV', 'HWV', 'MWV', 'HMV', 'MMV'
+  ],
+  subSurfaceValves: ['SCSSV', 'TRSCSSV', 'WRSCSSV', 'ICV'],
+  annulusValves: ['VR_PLUG', 'ANNULUS_VALVE']
+};
+
+// Enhanced failure analysis function
+function analyzeWellFailures(well, testResults) {
+  const failedValves = [];
+  const failedSurfaceValves = [];
+  const failedSubSurfaceValves = [];
+  const failedAnnulusValves = [];
+
+  if (!testResults || Object.keys(testResults).length === 0) {
+    return { failedValves, failedSurfaceValves, failedSubSurfaceValves, failedAnnulusValves };
+  }
+
+  const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
+
+  for (const valveDef of wellValves) {
+    const valveId = valveDef.id;
+    const valveLabel = valveDef.name || valveDef.id;
+    const valveTests = testResults[valveId];
+    
+    let latestResult = null;
+    if (Array.isArray(valveTests) && valveTests.length > 0) {
+      latestResult = valveTests[valveTests.length - 1];
+    } else if (valveTests && typeof valveTests === 'object' && !Array.isArray(valveTests)) {
+      latestResult = valveTests;
+    }
+
+    if (latestResult && typeof latestResult === 'object') {
+      const testPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
+
+      if (!testPassed) {
+        const failureInfo = {
+          valveId,
+          valveLabel,
+          result: latestResult,
+          failureReason: (latestResult.failure_reasons && Array.isArray(latestResult.failure_reasons) && latestResult.failure_reasons.length)
+            ? latestResult.failure_reasons.join(", ")
+            : "Test failed"
+        };
+
+        failedValves.push(failureInfo);
+
+        // Classify valve type based on the enhanced classification
+        const valveType = classifyValveType(valveId);
+        if (valveType === 'surface') {
+          failedSurfaceValves.push(failureInfo);
+        } else if (valveType === 'subsurface') {
+          failedSubSurfaceValves.push(failureInfo);
+        } else if (valveType === 'annulus') {
+          failedAnnulusValves.push(failureInfo);
+        }
+      }
+    }
+  }
+
+  return { failedValves, failedSurfaceValves, failedSubSurfaceValves, failedAnnulusValves };
+}
+
+function classifyValveType(valveId) {
+  const classification = window.valveClassification;
+  
+  // Check if it's a surface valve
+  if (classification.surfaceValves.some(sv => valveId.includes(sv) || sv.includes(valveId))) {
+    return 'surface';
+  }
+  
+  // Check if it's a subsurface valve
+  if (classification.subSurfaceValves.some(ssv => valveId.includes(ssv) || ssv.includes(valveId))) {
+    return 'subsurface';
+  }
+  
+  // Check if it's an annulus valve
+  if (classification.annulusValves.some(av => valveId.includes(av) || av.includes(valveId))) {
+    return 'annulus';
+  }
+  
+  // Default to surface if unknown
+  return 'surface';
+}
+
+
+
 // Utility Functions
 class WellFailureModel {
   constructor() {
@@ -226,32 +317,12 @@ let wells = []; // Used by this file for rendering the dashboard.
 
 // --- Matrix Matching Helper ---
 function matchesMatrix(well, testResults) {
-  // Get mapped well type for matrix lookup
-  const mappedType = window.wellFailureModel.getMappedWellType(well.type);
-  const matrix = window.wellFailureModel.matrix;
-
-  // Only consider wells with valid test data
-  if (!testResults || Object.keys(testResults).length === 0) return false;
-
-  // Check for any failed valve
-  let hasFailedTest = false;
-  for (const valveId in testResults) {
-    const tests = testResults[valveId];
-    if (Array.isArray(tests) && tests.length > 0) {
-      // Check the latest test for each valve
-      const latestTest = tests[tests.length - 1];
-      if (latestTest && typeof latestTest === 'object') {
-        const testPassed = latestTest.pass && latestTest.test_valid && latestTest.leak_rate_pass;
-        if (!testPassed) {
-          hasFailedTest = true;
-          break;
-        }
-      }
-    }
+  if (!testResults || Object.keys(testResults).length === 0) {
+    return false;
   }
 
-  // Only show wells that have failed tests (match matrix conditions)
-  return hasFailedTest;
+  const { failedValves } = analyzeWellFailures(well, testResults);
+  return failedValves.length > 0;
 }
 // Fetch valve test results from the integrity test endpoint
 async function fetchValveTestResults() {
@@ -402,116 +473,113 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA PROCESSING & STATUS LOGIC ---
 // --- DATA PROCESSING & STATUS LOGIC (Modified) ---
 // --- DATA PROCESSING & STATUS LOGIC (Matrix-Based) ---
+// --- ENHANCED DATA PROCESSING & STATUS LOGIC (Complete Matrix Implementation) ---
 function getLiveStatusForAllRings(well) {
   const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
   let rings = [];
 
-  const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
-  const orderedWellValves = [...wellValves].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-
-  if (orderedWellValves.length === 0) {
-      console.warn(`Well ${well.name || well.id} has no valves defined in its 'christmasTree.valves' property.`);
-      return [];
+  if (!testResults || Object.keys(testResults).length === 0) {
+    return [];
   }
 
-  // Analyze all valve failures to determine matrix conditions
-  const failedValves = [];
-  const failedSurfaceValves = [];
-  const failedSubSurfaceValves = [];
+  // Analyze failures using the enhanced analysis function
+  const { failedValves, failedSurfaceValves, failedSubSurfaceValves, failedAnnulusValves } = analyzeWellFailures(well, testResults);
 
-  for (const valveDef of orderedWellValves) {
-    const valveId = valveDef.id;
-    const valveLabel = valveDef.name || valveDef.id;
-
-    const valveTests = testResults[valveId];
-    let latestResult = null;
-
-    if (Array.isArray(valveTests) && valveTests.length > 0) {
-      latestResult = valveTests[valveTests.length - 1];
-    } else if (valveTests && typeof valveTests === 'object' && !Array.isArray(valveTests)) {
-      latestResult = valveTests;
-    }
-
-    // Check if valve failed
-    if (latestResult && typeof latestResult === 'object') {
-      const testPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
-
-      if (!testPassed) {
-        const failureInfo = {
-          valveId,
-          valveLabel,
-          result: latestResult,
-          failureReason: (latestResult.failure_reasons && Array.isArray(latestResult.failure_reasons) && latestResult.failure_reasons.length)
-            ? latestResult.failure_reasons.join(", ")
-            : "Test failed"
-        };
-
-        failedValves.push(failureInfo);
-
-        // Categorize valve type
-        const convertedValveName = window.wellFailureModel.convertValve(valveId);
-        if (convertedValveName === "SCSSV") {
-          failedSubSurfaceValves.push(failureInfo);
-        } else {
-          failedSurfaceValves.push(failureInfo);
-        }
-      }
-    }
-  }
-
-  // If no failed valves, return empty array
   if (failedValves.length === 0) {
     return [];
   }
 
-  // Determine matrix condition and get failure code
-  const wellType = getWellTypeKey(well.type);
+  // Determine matrix category and failure number based on specific failure combinations
+  const wellTypeKey = getWellTypeKey(well.type);
   let matrixCategory = '';
+  let failureNumber = 1;
   let failureCode = null;
 
-  // Apply matrix logic to determine failure category
+  // Simplified logic for basic categorization - can be enhanced for specific combinations
   if (failedSubSurfaceValves.length > 0 && failedSurfaceValves.length > 0) {
-    // Both surface and subsurface failures
+    // Sub-surface plus surface failure
     matrixCategory = 'subSurfacePlusSurfaceFailure';
-    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+    failureNumber = 1; // Default to first type
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, failureNumber, wellTypeKey);
   } else if (failedSubSurfaceValves.length > 1) {
-    // Multiple subsurface failures
+    // Multiple sub-surface failures
     matrixCategory = 'multipleSubSurfaceFailures';
-    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+    failureNumber = 1; // Default to first type
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, failureNumber, wellTypeKey);
   } else if (failedSubSurfaceValves.length === 1) {
-    // Single subsurface failure
+    // Single sub-surface failure - could be integrity or safety device
     matrixCategory = 'singleSubSurfaceFailure';
-    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+    failureNumber = 5; // Default to completion leak above allowable rate
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, failureNumber, wellTypeKey);
   } else if (failedSurfaceValves.length > 1) {
-    // Multiple surface failures
+    // Multiple surface failures - analyze specific combinations
     matrixCategory = 'multipleSurfaceFailures';
-    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+    failureNumber = determineMultipleSurfaceFailureNumber(failedSurfaceValves);
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, failureNumber, wellTypeKey);
   } else if (failedSurfaceValves.length === 1) {
-    // Single surface failure
+    // Single surface failure - analyze specific valve type
     matrixCategory = 'singleSurfaceFailure';
-    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+    failureNumber = determineSingleSurfaceFailureNumber(failedSurfaceValves[0]);
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, failureNumber, wellTypeKey);
   }
 
   // Get mitigating action and color from failure code
   const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
   const ringColor = mitigatingAction ? mitigatingAction.color : 'red';
   const matrixDescription = mitigatingAction ? mitigatingAction.description : 'Action required';
-  
 
   // Create rings for each failed valve with matrix-determined color
   failedValves.forEach(failureInfo => {
     rings.push({
       label: failureInfo.valveLabel,
       color: ringColor,
-      message: `${failureInfo.failureReason} - ${matrixDescription}`,
+      message: `${failureInfo.failureReason} - Code ${failureCode}: ${matrixDescription}`,
       failureCode: failureCode,
-      matrixCategory: matrixCategory
+      matrixCategory: matrixCategory,
+      failureNumber: failureNumber
     });
   });
 
   return rings;
 }
 
+function determineMultipleSurfaceFailureNumber(failedSurfaceValves) {
+  const valveIds = failedSurfaceValves.map(v => v.valveId);
+  
+  // Check for specific combinations from the matrix
+  const hasUMGV = valveIds.some(id => id.includes('UMGV'));
+  const hasFWV = valveIds.some(id => id.includes('FWV') || id.includes('PWV') || id.includes('AWV'));
+  const hasLMGV = valveIds.some(id => id.includes('LMGV'));
+  const hasKWV = valveIds.some(id => id.includes('KWV'));
+  const hasSWAB = valveIds.some(id => id.includes('SWAB'));
+  
+  // Apply matrix logic for specific combinations
+  if (hasFWV && hasUMGV) return 3; // FWV/PWV/AWV & UMGV/PMV/AMV failure
+  if (hasUMGV && (hasKWV || hasSWAB)) return 4; // UMGV & KWV or SWAB
+  if (hasUMGV && hasLMGV) return 5; // UMGV & LMGV
+  if (hasFWV && (hasKWV || hasSWAB)) return 6; // FWV & KWV or SWAB
+  if (hasFWV && hasLMGV) return 7; // FWV & LMGV
+  if (hasLMGV && (hasSWAB || hasKWV)) return 8; // LMGV & SWAB or KWV
+  
+  // Default to first type if no specific combination matched
+  return 1;
+}
+
+// Helper function to determine specific single surface failure number
+function determineSingleSurfaceFailureNumber(failedSurfaceValve) {
+  const valveId = failedSurfaceValve.valveId;
+  
+  // Map valve types to matrix failure numbers
+  if (valveId.includes('UMGV') || valveId.includes('PMV') || valveId.includes('AMV')) return 2;
+  if (valveId.includes('FWV') || valveId.includes('PWV') || valveId.includes('AWV')) return 3;
+  if (valveId.includes('LMGV')) return 4;
+  if (valveId.includes('SWAB') || valveId.includes('KWV')) return 5;
+  if (valveId.includes('MIV') || valveId.includes('CIV')) return 6;
+  if (valveId.includes('AXOV') || valveId.includes('XOV')) return 7;
+  
+  // Default to first type
+  return 1;
+}
 // Helper function to convert well type to matrix key
 // Helper function to convert well type to matrix key
 function getWellTypeKey(wellType) {
@@ -586,17 +654,12 @@ function renderMultiRingDashboard() {
     }).join('');
 
     const centerCircleRadius = Math.max(minRadius, (validRadii.length > 0 ? validRadii[validRadii.length - 1] - strokeWidth / 2 : minRadius));
-    const centerFill = '#71c4e6ff'; // Always use your blue
-    const svg = `<svg width="90" height="90" style="display:block">
-      ${ringsHtml}
-      <circle cx="45" cy="45" r="${centerCircleRadius}" fill="${centerFill}" />
-    </svg>`;
+    const svg = `<svg width="90" height="90" style="display:block">${ringsHtml}<circle cx="45" cy="45" r="${centerCircleRadius}" fill="#222" /></svg>`;
     const div = document.createElement('div');
     div.className = "well-multiring";
-    div.style.background = "transparent";
     div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
 
-    div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length))
+    div.onmousemove = (e) => showTooltip(e, well, div, ringData.slice(0, validRadii.length));
     div.onmouseleave = hideTooltip;
 
     div.onclick = () => {
@@ -746,740 +809,47 @@ function runIntegrityTestAndRefreshDashboard(testData) {
   });
 }
 
-
-// Modified showTooltip function to make tooltips clickable// Modified showTooltip function to properly detect all rings and extend hover time
 function showTooltip(e, well, div, ringData) {
   const rect = div.getBoundingClientRect();
   const x = e.clientX - rect.left - 45;
   const y = e.clientY - rect.top - 45;
   const r = Math.sqrt(x * x + y * y);
 
-  let ringInfo = null;
-  let ringIndex = -1;
-  
-  // Calculate actual radii based on the rendering logic from your dashboard
-  const totalRings = ringData.length;
-  const maxRadius = 44;
-  const minRadius = 9;
-  const strokeWidth = 2;
-  
-  let effectiveSpacing;
-  if (totalRings <= 1) {
-    effectiveSpacing = 0;
-  } else {
-    const availableRadiusForCenters = maxRadius - minRadius - strokeWidth;
-    effectiveSpacing = availableRadiusForCenters / Math.max(1, totalRings - 1);
-  }
+  let text = `<b>${well.name || 'N/A'}</b>`;
+  const radii = [44, 37, 30, 23, 16, 9];
+  const ringHalfWidth = 3.5;
 
-  const dynamicRadii = ringData.map((_, idx) => maxRadius - strokeWidth / 2 - (idx * effectiveSpacing));
-  const validRadii = dynamicRadii.filter(radius => radius > strokeWidth / 2);
-  
-  // Increased detection width for better click/hover detection
-  const ringHalfWidth = strokeWidth + 2; // Increased from 3.5 to strokeWidth + 2
-
-  // Check each ring from outermost to innermost
-  for (let i = 0; i < validRadii.length; i++) {
-    const ringRadius = validRadii[i];
-    if (Math.abs(r - ringRadius) <= ringHalfWidth) {
-      // Find the corresponding ring data
-      const originalIndex = dynamicRadii.indexOf(ringRadius);
-      if (originalIndex !== -1 && ringData[originalIndex]) {
-        ringInfo = ringData[originalIndex];
-        ringIndex = i;
-        break;
+  for (let i = 0; i < radii.length; i++) {
+    if (Math.abs(r - radii[i]) <= ringHalfWidth) {
+      if (ringData && ringData[i]) {
+        text = `<b>${ringData[i].label || 'N/A'}:</b> ${ringData[i].message || 'No message'}`;
       }
+      break;
     }
   }
-
-  // Only show tooltip if there is matrix/ring info (not just well name)
-  if (ringInfo && ringInfo.failureCode) {
-    const text = `<b>${ringInfo.label || 'N/A'}:</b> ${ringInfo.message || 'No message'}
-      <div style="margin-top: 8px; font-size: 11px; color: #888;">
-        Click for detailed information
-      </div>`;
-    showTooltipBox(e.clientX, e.clientY, text, ringInfo);
-  } else {
-    hideTooltip();
-  }
+  showTooltipBox(e.clientX, e.clientY, text);
 }
 
-// Modified showTooltipBox function with better hover retention
-let hideTimeout = null;
-let currentTooltip = null;
-
-function showTooltipBox(x, y, html, ringInfo = null) {
-  // Clear any existing hide timeout
-  if (hideTimeout) {
-    clearTimeout(hideTimeout);
-    hideTimeout = null;
-  }
-  
+function showTooltipBox(x, y, html) {
   let t = document.getElementById('dashboardTooltip');
   if (!t) {
     t = document.createElement('div');
     t.id = 'dashboardTooltip';
     t.className = 'tooltip';
-    t.style.cssText = `
-      position: absolute;
-      background: rgba(0,0,0,0.9);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      max-width: 250px;
-      z-index: 1000;
-      cursor: pointer;
-      border: 1px solid #555;
-      transition: opacity 0.2s ease;
-      pointer-events: auto;
-    `;
     document.body.appendChild(t);
-    
-    // Add hover handlers to keep tooltip visible when hovering over it
-    t.addEventListener('mouseenter', function() {
-      if (hideTimeout) {
-        clearTimeout(hideTimeout);
-        hideTimeout = null;
-      }
-    });
-    
-    t.addEventListener('mouseleave', function() {
-      hideTooltip();
-    });
   }
-  
-  currentTooltip = t;
   t.innerHTML = html;
   t.style.left = (x + 15) + 'px';
   t.style.top = (y + 15) + 'px';
   t.style.display = 'block';
   t.style.visibility = 'visible';
-  t.style.opacity = '1';
-
-  // Mark if tooltip has matrix info
-  if (ringInfo && ringInfo.failureCode) {
-    t.setAttribute('data-matrix-info', 'true');
-  } else {
-    t.removeAttribute('data-matrix-info');
-  }
-
-  // Remove any existing click handlers
-  t.onclick = null;
-  // Add click handler if we have ring information
-  if (ringInfo && ringInfo.failureCode) {
-    t.onclick = function(event) {
-      event.stopPropagation();
-      showDetailedFailureModal(ringInfo);
-    };
-  }
 }
 
-// Modified hideTooltip function with longer delay for matrix info
 function hideTooltip() {
   let t = document.getElementById('dashboardTooltip');
-  if (t) {
-    // Clear any existing timeout
-    if (hideTimeout) {
-      clearTimeout(hideTimeout);
-    }
-    
-    if (t.getAttribute('data-matrix-info') === 'true') {
-      // Longer delay for matrix info tooltips (3 seconds instead of 5)
-      hideTimeout = setTimeout(() => {
-        if (t && t.style.display !== 'none') {
-          t.style.opacity = '0';
-          setTimeout(() => {
-            if (t) t.style.display = 'none';
-          }, 200);
-        }
-      }, 1000);
-    } else {
-      // Immediate hide for non-matrix tooltips
-      t.style.opacity = '0';
-      setTimeout(() => {
-        if (t) t.style.display = 'none';
-      }, 200);
-    }
-  }
+  if (t) t.style.display = 'none';
 }
 
-// Add this helper function to handle mouse movement more smoothly
-function handleWellHover(e, well, div, ringData) {
-  // Throttle the tooltip updates to prevent flickering
-  if (!div._tooltipThrottle) {
-    div._tooltipThrottle = true;
-    setTimeout(() => {
-      div._tooltipThrottle = false;
-      showTooltip(e, well, div, ringData);
-    }, 50);
-  }
-}
-
-// Update the mouse event handlers in your renderMultiRingDashboard function
-// Replace the existing onmousemove assignment with:
-// div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length));
-// New function to show detailed failure information in a modal
-function showDetailedFailureModal(ringInfo) {
-  // Remove existing modal if present
-  const existingModal = document.getElementById('failureDetailModal');
-  if (existingModal) {
-    existingModal.remove();
-  }
-  
-  // Create modal backdrop
-  const backdrop = document.createElement('div');
-  backdrop.id = 'failureDetailModal';
-  backdrop.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `;
-  
-  // Get failure details from matrix
-  const mitigatingAction = window.wellFailureModel.getMitigatingAction(ringInfo.failureCode);
-  const matrixFailure = getMatrixFailureDetails(ringInfo.matrixCategory, ringInfo.failureNumber);
-  
-  // Create modal content
-  const modal = document.createElement('div');
-  modal.style.cssText = `
-    background: white;
-    border-radius: 8px;
-    padding: 24px;
-    max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: relative;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  `;
-  
-  modal.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-      <h3 style="margin: 0; color: #333;">Failure Details - ${ringInfo.label}</h3>
-      <button id="closeModal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-    </div>
-    
-    <div style="border-left: 4px solid ${getColorForCode(ringInfo.failureCode)}; padding-left: 16px; margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Code: ${ringInfo.failureCode}</h4>
-      <p style="margin: 0; color: #666; font-size: 14px;">Traffic Light: ${mitigatingAction ? mitigatingAction.trafficLight.toUpperCase() : 'Unknown'}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Matrix Category:</h4>
-      <p style="margin: 0; color: #666;">${formatCategoryName(ringInfo.matrixCategory)}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Description:</h4>
-      <p style="margin: 0; color: #666; line-height: 1.4;">${matrixFailure ? matrixFailure.description : 'Description not available'}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Required Action:</h4>
-      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.4;">
-        ${mitigatingAction ? mitigatingAction.description : 'Action not defined'}
-      </div>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Test Failure Reason:</h4>
-      <p style="margin: 0; color: #666; font-style: italic;">${ringInfo.message.split(' - Code')[0]}</p>
-    </div>
-    
-    <div style="text-align: right; margin-top: 24px;">
-      <button id="closeModalBtn" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-        Close
-      </button>
-    </div>
-  `;
-  
-  backdrop.appendChild(modal);
-  document.body.appendChild(backdrop);
-  
-  // Add close handlers
-  const closeModal = () => {
-    backdrop.remove();
-    hideTooltip(); // Also hide the tooltip
-  };
-  
-  document.getElementById('closeModal').onclick = closeModal;
-  document.getElementById('closeModalBtn').onclick = closeModal;
-  backdrop.onclick = (e) => {
-    if (e.target === backdrop) closeModal();
-  };
-  
-  // Close on Escape key
-  const escapeHandler = (e) => {
-    if (e.key === 'Escape') {
-      closeModal();
-      document.removeEventListener('keydown', escapeHandler);
-    }
-  };
-  document.addEventListener('keydown', escapeHandler);
-}
-
-// Helper function to get matrix failure details
-function getMatrixFailureDetails(category, failureNumber) {
-  if (window.wellFailureMatrix && window.wellFailureMatrix[category] && window.wellFailureMatrix[category][failureNumber]) {
-    return window.wellFailureMatrix[category][failureNumber];
-  }
-  return null;
-}
-
-// Helper function to get color for failure code
-function getColorForCode(code) {
-  const mitigatingAction = window.wellFailureModel.getMitigatingAction(code);
-  if (mitigatingAction) {
-    const colorMap = {
-      'green': '#19d219',
-      'yellow': '#e6c23a', 
-      'orange': '#ff9800',
-      'red': '#e64a3a'
-    };
-    return colorMap[mitigatingAction.color] || '#999';
-  }
-  return '#999';
-}
-
-// Helper function to format category names
-function formatCategoryName(category) {
-  const nameMap = {
-    'maintenanceFailure': 'Maintenance Schedule Failure',
-    'singleSurfaceFailure': 'Single Surface Failure',
-    'multipleSurfaceFailures': 'Multiple Surface Failures',
-    'singleSubSurfaceFailure': 'Single Sub-Surface/Integrity Failure',
-    'multipleSubSurfaceFailures': 'Multiple Sub-Surface Failures',
-    'subSurfacePlusSurfaceFailure': 'Combined Surface & Sub-Surface Failure'
-  };
-  return nameMap[category] || category;
-}
-
-// =================== Dashboard Filter Dropdown Implementation ===================
-
-// Add this function to determine well status categories
-function categorizeWellByTestResults(well) {
-  const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
-  
-  // Check if well has any valve test data
-  const hasTestData = Object.keys(testResults).length > 0;
-  if (!hasTestData) {
-    return 'no-data';
-  }
-
-  // Check if any valve has failed tests
-  let hasFailures = false;
-  let hasValidTests = false;
-
-  for (const valveId in testResults) {
-    const tests = testResults[valveId];
-    if (Array.isArray(tests) && tests.length > 0) {
-      hasValidTests = true;
-      const latestTest = tests[tests.length - 1];
-      if (latestTest && typeof latestTest === 'object') {
-        const testPassed = latestTest.pass && latestTest.test_valid && latestTest.leak_rate_pass;
-        if (!testPassed) {
-          hasFailures = true;
-          break;
-        }
-      }
-    }
-  }
-
-  if (!hasValidTests) {
-    return 'no-data';
-  }
-
-  return hasFailures ? 'with-failures' : 'no-failures';
-}
-
-// Modified function to filter wells based on selected option
-function getWellsByFilterOption(filterOption) {
-  const allWells = deduplicateWellsById(wells);
-  
-  switch (filterOption) {
-    case 'with-failures':
-      return allWells.filter(well => {
-        const category = categorizeWellByTestResults(well);
-        return category === 'with-failures';
-      });
-      
-    case 'no-failures':
-      return allWells.filter(well => {
-        const category = categorizeWellByTestResults(well);
-        return category === 'no-failures';
-      });
-      
-    case 'all':
-      return allWells; // <-- changed here
-    default:
-      return allWells.filter(well => categorizeWellByTestResults(well) === 'with-failures');
-  }
-}
-
-// Function to create and insert the filter dropdown
-function createDashboardFilterDropdown() {
-  // Find the dashboard container
-  const dashboardContainer = document.getElementById('wellMultiRingBoard');
-  if (!dashboardContainer) {
-    console.error("Dashboard container not found");
-    return;
-  }
-
-  // Check if dropdown already exists
-  let existingDropdown = document.getElementById('dashboardFilterContainer');
-  if (existingDropdown) {
-    existingDropdown.remove();
-  }
-
-  // Create dropdown container
-  const dropdownContainer = document.createElement('div');
-  dropdownContainer.id = 'dashboardFilterContainer';
-  dropdownContainer.style.cssText = `
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: rgba(0,0,0,0.1);
-    border-radius: 4px;
-  `;
-
-  // Create label
-  const label = document.createElement('label');
-  label.textContent = 'Show Wells:';
-  label.style.cssText = `
-    font-weight: bold;
-    color: #333;
-    font-size: 14px;
-  `;
-
-  // Create dropdown select
-  const select = document.createElement('select');
-  select.id = 'dashboardFilter';
-  select.style.cssText = `
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: white;
-    font-size: 14px;
-    cursor: pointer;
-  `;
-
-  // Add options
-  const options = [
-    { value: 'with-failures', text: 'With Failures Only' },
-    { value: 'no-failures', text: 'No Failures (Passed Tests)' },
-    { value: 'all', text: 'All Wells' }
-  ];
-
-  options.forEach(option => {
-    const optionElement = document.createElement('option');
-    optionElement.value = option.value;
-    optionElement.textContent = option.text;
-    select.appendChild(optionElement);
-  });
-
-  // Set default to current behavior (with failures)
-  select.value = 'with-failures';
-
-  // Add change event listener
-  select.addEventListener('change', function() {
-    const selectedFilter = this.value;
-    console.log(`Dashboard filter changed to: ${selectedFilter}`);
-    renderFilteredDashboard(selectedFilter);
-    updateFilteredKPIs(selectedFilter);
-  });
-
-  // Create stats display
-  const statsContainer = document.createElement('div');
-  statsContainer.id = 'filterStats';
-  statsContainer.style.cssText = `
-    margin-left: auto;
-    font-size: 12px;
-    color: #666;
-    background: rgba(255,255,255,0.7);
-    padding: 6px 10px;
-    border-radius: 3px;
-  `;
-
-  // Assemble dropdown
-  dropdownContainer.appendChild(label);
-  dropdownContainer.appendChild(select);
-  dropdownContainer.appendChild(statsContainer);
-
-  // Insert before dashboard
-  dashboardContainer.parentNode.insertBefore(dropdownContainer, dashboardContainer);
-
-  // Initial stats update
-  updateFilterStats('with-failures');
-}
-
-// Function to update the stats display
-function updateFilterStats(filterOption) {
-  const statsContainer = document.getElementById('filterStats');
-  if (!statsContainer) return;
-
-  const allWells = deduplicateWellsById(wells);
-  const withFailures = allWells.filter(well => categorizeWellByTestResults(well) === 'with-failures').length;
-  const noFailures = allWells.filter(well => categorizeWellByTestResults(well) === 'no-failures').length;
-  const allWithData = withFailures + noFailures;
-  const noData = allWells.filter(well => categorizeWellByTestResults(well) === 'no-data').length;
-
-  let currentCount;
-  switch (filterOption) {
-    case 'with-failures':
-      currentCount = withFailures;
-      break;
-    case 'no-failures':
-      currentCount = noFailures;
-      break;
-    case 'all':
-      currentCount = allWells.length;
-      break;
-    default:
-      currentCount = withFailures;
-  }
-
-  statsContainer.innerHTML = `
-    Showing: ${currentCount} wells<br>
-    <small>Failed: ${withFailures} | Passed: ${noFailures} | No Data: ${noData}</small>
-  `;
-}
-
-// Modified dashboard render function with filtering
-function renderFilteredDashboard(filterOption = 'with-failures') {
-  const container = document.getElementById('wellMultiRingBoard');
-  if (!container) {
-    console.error("Dashboard container 'wellMultiRingBoard' not found.");
-    return;
-  }
-
-  const filteredWells = getWellsByFilterOption(filterOption);
-  container.innerHTML = '';
-  
-  if (filteredWells.length === 0) {
-    let message;
-    switch (filterOption) {
-      case 'no-failures':
-        message = "No wells with passed tests found.";
-        break;
-      case 'all-with-data':
-        message = "No wells with test data found.";
-        break;
-      default:
-        message = "No wells with failed tests found.";
-    }
-    container.innerHTML = `<p style='color:#ccc; text-align:center;'>${message}</p>`;
-    return;
-  }
-
-  filteredWells.forEach(well => {
-    if (!well || typeof well.name === 'undefined') return;
-
-    const ringData = getLiveStatusForAllRings(well);
-    
-    // For wells with no failures, create a single green ring
-    let displayRings = ringData;
-    if (filterOption === 'no-failures' && ringData.length === 0) {
-      displayRings = [{
-        label: 'All Tests Passed',
-        color: 'green',
-        message: 'All valve tests passed successfully',
-        failureCode: 0
-      }];
-    } else if (filterOption === 'all-with-data' && ringData.length === 0) {
-      displayRings = [{
-        label: 'Tests Passed',
-        color: 'green', 
-        message: 'All valve tests passed successfully',
-        failureCode: 0
-      }];
-    }
-
-    const totalRings = displayRings.length;
-    const maxRadius = 44;
-    const minRadius = 9;
-    const strokeWidth = 2;
-
-    let effectiveSpacing;
-    if (totalRings <= 1) {
-      effectiveSpacing = 0;
-    } else {
-      const availableRadiusForCenters = maxRadius - minRadius - strokeWidth;
-      effectiveSpacing = availableRadiusForCenters / Math.max(1, totalRings - 1);
-    }
-
-    const dynamicRadii = displayRings.map((_, idx) => maxRadius - strokeWidth / 2 - (idx * effectiveSpacing));
-    const validRadii = dynamicRadii.filter(r => r > strokeWidth / 2);
-
-    const ringsHtml = validRadii.map((radius, idx) => {
-      const originalRingIndex = dynamicRadii.indexOf(radius);
-      if (originalRingIndex !== -1 && displayRings[originalRingIndex]) {
-        return `<circle cx="45" cy="45" r="${radius}" stroke="${colorMap(displayRings[originalRingIndex].color)}" stroke-width="${strokeWidth}" fill="none" />`;
-      }
-      return '';
-    }).join('');
-
-    const centerCircleRadius = Math.max(minRadius, (validRadii.length > 0 ? validRadii[validRadii.length - 1] - strokeWidth / 2 : minRadius));
-    const centerFill = '#dd0808ff'; // Always use your blue
-    const svg = `<svg width="90" height="90" style="display:block">
-      ${ringsHtml}
-      <circle cx="45" cy="45" r="${centerCircleRadius}" fill="${centerFill}" />
-    </svg>`;
-        
-    const div = document.createElement('div');
-    div.className = "well-multiring";
-    div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
-
-    div.onmousemove = (e) => handleWellHover(e, well, div, displayRings.slice(0, validRadii.length));
-    div.onmouseleave = hideTooltip;
-
-    div.onclick = () => {
-      if (typeof showSection === "function") {
-        showSection('wells');
-        setTimeout(() => {
-          const wellDropdown = document.getElementById('wellDropdown');
-          if (wellDropdown) {
-            wellDropdown.value = well.name;
-            wellDropdown.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }, 100);
-      }
-    };
-    
-    container.appendChild(div);
-  });
-
-  console.log(`Dashboard: Displaying ${filteredWells.length} wells with filter: ${filterOption}`);
-}
-
-// Function to update KPIs based on filtered wells
-function updateFilteredKPIs(filterOption) {
-  const filteredWells = getWellsByFilterOption(filterOption);
-  
-  if (document.getElementById('kpiWells')) {
-    document.getElementById('kpiWells').textContent = filteredWells.length;
-  }
-
-  let redRings = 0, orangeRings = 0, yellowRings = 0, wellsWithRedRing = 0;
-
-  filteredWells.forEach(well => {
-    const category = categorizeWellByTestResults(well);
-    
-    if (category === 'with-failures') {
-      const ringsStatus = getLiveStatusForAllRings(well);
-      let hasRedRing = false;
-      ringsStatus.forEach(ring => {
-        if (ring.color === 'red') { redRings++; hasRedRing = true; }
-        if (ring.color === 'orange') orangeRings++;
-        if (ring.color === 'yellow') yellowRings++;
-      });
-      if (hasRedRing) wellsWithRedRing++;
-    }
-    // Wells with no failures don't contribute to failure counts
-  });
-
-  if (document.getElementById('kpiRed')) document.getElementById('kpiRed').textContent = redRings;
-  if (document.getElementById('kpiOrange')) document.getElementById('kpiOrange').textContent = orangeRings;
-  if (document.getElementById('kpiYellow')) document.getElementById('kpiYellow').textContent = yellowRings;
-
-  if (document.getElementById('kpiRepairs')) {
-    document.getElementById('kpiRepairs').textContent = wellsWithRedRing;
-  }
-
-  // Deviations count stays the same regardless of filter
-  if (document.getElementById('kpiDeviations')) {
-    document.getElementById('kpiDeviations').textContent = countActiveDeviationsFromRecords();
-  }
-}
-
-// Modified main render function to use the new filtering system
-function renderMultiRingDashboardWithFilter() {
-  // Create dropdown if it doesn't exist
-  createDashboardFilterDropdown();
-  
-  // Get current filter value or default to 'with-failures'
-  const filterSelect = document.getElementById('dashboardFilter');
-  const currentFilter = filterSelect ? filterSelect.value : 'with-failures';
-  
-  // Render with current filter
-  renderFilteredDashboard(currentFilter);
-  updateFilteredKPIs(currentFilter);
-  updateFilterStats(currentFilter);
-}
-
-// Update the main initialization functions
-function fetchWellsAndSyncResultsWithFilter() {
-  console.log(`Dashboard: Fetching all application data...`);
-  
-  // Keep all the existing fetch logic from fetchWellsAndSyncResults
-  fetch('http://10.226.112.214:5000/api/wells/')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(wellsData => {
-      const processedWellsData = wellsData || [];
-      
-      return fetch('http://10.226.112.214:5000/api/valves/')
-        .then(valvesResponse => {
-          if (!valvesResponse.ok) {
-            console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
-            window.allValves = [];
-          } else {
-            return valvesResponse.json().then(valvesData => {
-              window.allValves = valvesData;
-              console.log("Dashboard: Valve list fetched successfully.", window.allValves);
-            });
-          }
-        })
-        .then(() => {
-          wells = deduplicateWellsById(processedWellsData);
-          window.wells = wells;
-
-          window.valveTestResults = {};
-          window.wells.forEach(well => {
-            window.valveTestResults[well.name] = {};
-          });
-
-          return fetchValveTestResults();
-        })
-        .then(() => {
-          console.log("Dashboard: Well data and valve test results fetched successfully.");
-          renderMultiRingDashboardWithFilter();
-          
-          if (typeof renderWellsSection === "function" && document.getElementById('wellList')) {
-            renderWellsSection();
-          }
-        })
-        .catch(testError => {
-          console.warn("Dashboard: Failed to fetch valve test results:", testError);
-          renderMultiRingDashboardWithFilter();
-        });
-    })
-    .catch(error => {
-      console.error("Dashboard: Failed to fetch and sync data:", error);
-      const container = document.getElementById('wellMultiRingBoard');
-      if (container) {
-        container.innerHTML = `<p style="color:#888; text-align:center; padding:20px;">Error loading application data.</p>`;
-      }
-    });
-}
-
-// Update window exports
-window.renderMultiRingDashboard = renderMultiRingDashboardWithFilter;
-window.fetchWellsAndSyncResults = fetchWellsAndSyncResultsWithFilter;
-window.categorizeWellByTestResults = categorizeWellByTestResults;
-window.getWellsByFilterOption = getWellsByFilterOption;
-window.renderFilteredDashboard = renderFilteredDashboard;
 window.onload = function() {
     console.log(`Dashboard: Initializing for user: ${window.currentUser.login}`);
     fetchWellsAndSyncResults();
