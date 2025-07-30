@@ -270,7 +270,7 @@ async function fetchValveTestResults() {
                 ? well.christmasTree.valves : [];
             for (const valve of valves) {
                 const valveId = valve.id;
-                const url = `http://10.226.112.214:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
+                const url = `http://10.226.113.162:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
                 fetchPromises.push(
                     fetch(url)
                         .then(resp => {
@@ -357,7 +357,7 @@ async function fetchWellsAndInitialize() {
     try {
         showTemporaryMessage('Loading wells data...', 'info');
 
-        const response = await fetch('http://10.226.112.214:5000/api/wells');
+        const response = await fetch('http://10.226.113.162:5000/api/wells');
         if (!response.ok) {
             console.error("Failed to fetch wells data:", response.status, await response.text());
             showTemporaryMessage('Failed to load wells data', 'warning');
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA PROCESSING & STATUS LOGIC ---
 // --- DATA PROCESSING & STATUS LOGIC (Modified) ---
 // --- DATA PROCESSING & STATUS LOGIC (Matrix-Based) ---
-function getLiveStatusForAllRings(well) {
+function getLiveStatusForAllRingsWithEscalation(well) {
   const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
   let rings = [];
 
@@ -410,8 +410,8 @@ function getLiveStatusForAllRings(well) {
   const orderedWellValves = [...wellValves].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 
   if (orderedWellValves.length === 0) {
-      console.warn(`Well ${well.name || well.id} has no valves defined in its 'christmasTree.valves' property.`);
-      return [];
+    console.warn(`Well ${well.name || well.id} has no valves defined in its 'christmasTree.valves' property.`);
+    return [];
   }
 
   // Analyze all valve failures to determine matrix conditions
@@ -464,25 +464,6 @@ function getLiveStatusForAllRings(well) {
     return [];
   }
 
-
-  // --- ESCALATION INTEGRATION START ---
-  // Only escalate if there are failures and not already escalated for this well in this session
-  if (
-    failedValves.length > 0 &&
-    !window.activeEscalations.some(ec => ec.issue && ec.issue.well === well.name && ec.status === "pending")
-  ) {
-    // You can choose which failed valve to escalate (here: the first one)
-    const firstFailed = failedValves[0];
-    window.triggerValveFailureEscalation({
-      well,
-      valve: firstFailed.valveLabel,
-      details: firstFailed.failureReason,
-      leadEngineer: window.currentUser ? window.currentUser.login : "Unknown"
-    });
-    // Optionally: show a message or UI indicator that escalation was triggered
-    console.log(`Escalation triggered for well ${well.name}, valve ${firstFailed.valveLabel}.`);
-  }
-  // --- ESCALATION INTEGRATION END ---
   // Determine matrix condition and get failure code
   const wellType = getWellTypeKey(well.type);
   let matrixCategory = '';
@@ -490,23 +471,18 @@ function getLiveStatusForAllRings(well) {
 
   // Apply matrix logic to determine failure category
   if (failedSubSurfaceValves.length > 0 && failedSurfaceValves.length > 0) {
-    // Both surface and subsurface failures
     matrixCategory = 'subSurfacePlusSurfaceFailure';
     failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
   } else if (failedSubSurfaceValves.length > 1) {
-    // Multiple subsurface failures
     matrixCategory = 'multipleSubSurfaceFailures';
     failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
   } else if (failedSubSurfaceValves.length === 1) {
-    // Single subsurface failure
     matrixCategory = 'singleSubSurfaceFailure';
     failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
   } else if (failedSurfaceValves.length > 1) {
-    // Multiple surface failures
     matrixCategory = 'multipleSurfaceFailures';
     failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
   } else if (failedSurfaceValves.length === 1) {
-    // Single surface failure
     matrixCategory = 'singleSurfaceFailure';
     failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
   }
@@ -515,7 +491,36 @@ function getLiveStatusForAllRings(well) {
   const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
   const ringColor = mitigatingAction ? mitigatingAction.color : 'red';
   const matrixDescription = mitigatingAction ? mitigatingAction.description : 'Action required';
-  
+  const trafficLight = mitigatingAction ? mitigatingAction.trafficLight : 'red';
+
+  // =================== ESCALATION INTEGRATION ===================
+  // Automatically escalate each failed valve if escalation system is available
+  if (window.escalationSystem && typeof window.autoEscalateFailedValve === 'function') {
+    failedValves.forEach(failureInfo => {
+      const failureDetails = {
+        failureReason: failureInfo.failureReason,
+        failureCode: failureCode,
+        matrixCategory: matrixCategory,
+        trafficLight: trafficLight,
+        matrixDescription: matrixDescription,
+        wellType: wellType,
+        testResult: failureInfo.result,
+        timestamp: new Date()
+      };
+
+      // Check if this is a new failure or updated failure that needs escalation
+      const shouldEscalate = checkIfShouldEscalate(well.name, failureInfo.valveId, failureDetails);
+      
+      if (shouldEscalate) {
+        try {
+          const escalation = window.autoEscalateFailedValve(well.name, failureInfo.valveId, failureDetails);
+          console.log(`Auto-escalated valve failure: ${well.name} - ${failureInfo.valveId} (Escalation ID: ${escalation.id})`);
+        } catch (error) {
+          console.error(`Failed to escalate valve failure for ${well.name} - ${failureInfo.valveId}:`, error);
+        }
+      }
+    });
+  }
 
   // Create rings for each failed valve with matrix-determined color
   failedValves.forEach(failureInfo => {
@@ -524,14 +529,12 @@ function getLiveStatusForAllRings(well) {
       color: ringColor,
       message: `${failureInfo.failureReason} - ${matrixDescription}`,
       failureCode: failureCode,
-      matrixCategory: matrixCategory
+      matrixCategory: matrixCategory,
+      trafficLight: trafficLight
     });
   });
 
   return rings;
-
-  
-
 }
 
 // Helper function to convert well type to matrix key
@@ -578,7 +581,7 @@ function renderMultiRingDashboard() {
     console.log(`Well ${well.name} matches matrix conditions - displaying in dashboard`);
 
     // ... rest of the existing rendering code remains the same ...
-    const ringData = getLiveStatusForAllRings(well);
+    const ringData = getLiveStatusForAllRingsWithEscalation(well);
     const totalRings = ringData.length;
     const maxRadius = 44;
     const minRadius = 9;
@@ -671,7 +674,7 @@ function updateDashboardKPIs(wellsForKPIs) {
   let redRings = 0, orangeRings = 0, yellowRings = 0, wellsWithRedRing = 0;
 
   wellsForKPIs.forEach(w => {
-    const ringsStatus = getLiveStatusForAllRings(w);
+    const ringsStatus = getLiveStatusForAllRingsWithEscalation(w);
     let hasRedRing = false;
     ringsStatus.forEach(ring => {
       if (ring.color === 'red') { redRings++; hasRedRing = true; }
@@ -697,7 +700,7 @@ function updateDashboardKPIs(wellsForKPIs) {
 async function fetchWellsAndSyncResults() {
   console.log(`Dashboard: Fetching all application data...`);
   try {
-    const wellsResponse = await fetch('http://10.226.112.214:5000/api/wells/');
+    const wellsResponse = await fetch('http://10.226.113.162:5000/api/wells/');
     if (!wellsResponse.ok) {
       throw new Error(`HTTP error! status: ${wellsResponse.status}`);
     }
@@ -705,7 +708,7 @@ async function fetchWellsAndSyncResults() {
     const processedWellsData = wellsData || [];
     
 
-    const valvesResponse = await fetch('http://10.226.112.214:5000/api/valves/');
+    const valvesResponse = await fetch('http://10.226.113.162:5000/api/valves/');
     if (!valvesResponse.ok) {
        console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
        window.allValves = [];
@@ -747,7 +750,7 @@ async function fetchWellsAndSyncResults() {
 function runIntegrityTestAndRefreshDashboard(testData) {
   console.log('Dashboard: Submitting integrity test...');
 
-  fetch('http://10.226.112.214:5000/api/run_integrity_test', {
+  fetch('http://10.226.113.162:5000/api/run_integrity_test', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(testData)
@@ -1304,7 +1307,7 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
   filteredWells.forEach(well => {
     if (!well || typeof well.name === 'undefined') return;
 
-    const ringData = getLiveStatusForAllRings(well);
+    const ringData = getLiveStatusForAllRingsWithEscalation(well);
     
     // For wells with no failures, create a single green ring
     let displayRings = ringData;
@@ -1395,7 +1398,7 @@ function updateFilteredKPIs(filterOption) {
     const category = categorizeWellByTestResults(well);
     
     if (category === 'with-failures') {
-      const ringsStatus = getLiveStatusForAllRings(well);
+      const ringsStatus = getLiveStatusForAllRingsWithEscalation(well);
       let hasRedRing = false;
       ringsStatus.forEach(ring => {
         if (ring.color === 'red') { redRings++; hasRedRing = true; }
@@ -1441,7 +1444,7 @@ function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
   // Keep all the existing fetch logic from fetchWellsAndSyncResults
-  fetch('http://10.226.112.214:5000/api/wells/')
+  fetch('http://10.226.113.162:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1451,7 +1454,7 @@ function fetchWellsAndSyncResultsWithFilter() {
     .then(wellsData => {
       const processedWellsData = wellsData || [];
       
-      return fetch('http://10.226.112.214:5000/api/valves/')
+      return fetch('http://10.226.113.162:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
@@ -1511,4 +1514,4 @@ window.renderMultiRingDashboard = renderMultiRingDashboard;
 window.fetchWellsAndSyncResults = fetchWellsAndSyncResults;
 window.runIntegrityTestAndRefreshDashboard = runIntegrityTestAndRefreshDashboard;
 window.fetchValveTestResults = fetchValveTestResults;
-window.getLiveStatusForAllRings = getLiveStatusForAllRings;
+window.getLiveStatusForAllRingsWithEscalation = getLiveStatusForAllRingsWithEscalation;

@@ -109,7 +109,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
   let validBlockingValves = [];
   try {
     // NOTE: This API endpoint also uses the valve NAME.
-    const response = await fetch(`http://10.226.112.214:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
+    const response = await fetch(`http://10.226.113.162:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
     if (response.ok) {
       const data = await response.json();
       
@@ -261,7 +261,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
 
            try {
         // STEP 1: Fetch raw calculated data from the backend
-        const response = await fetch('http://10.226.112.214:5000/api/integrity_test/', {
+        const response = await fetch('http://10.226.113.162:5000/api/integrity_test/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(apiPayload)
@@ -572,7 +572,7 @@ async function exportTestData(wellId) {
 
 async function refreshWellDataFromAPI(wellId = null) {
   try {
-    const response = await fetch('http://10.226.112.214:5000/api/wells/');
+    const response = await fetch('http://10.226.113.162:5000/api/wells/');
     if (!response.ok) {
       return false;
     }
@@ -581,7 +581,7 @@ async function refreshWellDataFromAPI(wellId = null) {
     window.wells = wellsData;
     
     if (wellId) {
-      const testResultsResponse = await fetch(`http://10.226.112.214:5000/api/integrity_test/results?well=${wellId}`);
+      const testResultsResponse = await fetch(`http://10.226.113.162:5000/api/integrity_test/results?well=${wellId}`);
       if (testResultsResponse.ok) {
         // Data refreshed - no need to store in localStorage
       }

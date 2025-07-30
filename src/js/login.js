@@ -1,105 +1,289 @@
-// --- USER DB: Persist to localStorage ---
-function loadUsers() {
-  let users = [];
-  try { users = JSON.parse(localStorage.getItem('wimt-users') || "[]"); } catch {}
-  if (!users || !users.length) {
-    users = [
-      { username: "admin", password: sha256Sync("password"), role: "admin" },
-      { username: "supervisor", password: sha256Sync("supervisor1"), role: "supervisor" },
-      { username: "tech", password: sha256Sync("tech1"), role: "technician" }
-    ];
-    localStorage.setItem('wimt-users', JSON.stringify(users));
+// --- API ENDPOINTS CONFIGURATION ---
+const API_BASE_URL = 'http://10.226.113.162:5000/api'; // Updated API base URL
+
+// --- USER AUTHENTICATION & MANAGEMENT ---
+class AuthService {
+  static currentToken = null;
+  static currentUserData = null;
+
+  static async login(email, password) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Login failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(data);
+      
+   
+
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   }
-  return users;
-}
-function saveUsers(users) {
-  localStorage.setItem('wimt-users', JSON.stringify(users));
-}
-let users = loadUsers();
 
-// --- DEV BYPASS: Persist currentUser across reloads, or always auto-login as admin in dev ---
-let currentUser = JSON.parse(localStorage.getItem('wimt-currentUser')) || null;
-if (!currentUser) {
-  currentUser = users.find(u => u.username === "admin");
-  localStorage.setItem('wimt-currentUser', JSON.stringify(currentUser));
+  static async register(userData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': this.currentToken ? `Bearer ${this.currentToken}` : undefined
+        },
+        body: JSON.stringify(userData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  }
+
+  static async getCurrentUser() {
+    if (!this.currentToken) return null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${this.currentToken}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.warn('Token validation failed, logging out');
+        this.logout();
+        return null;
+      }
+      
+      const user = await response.json();
+      this.currentUserData = user;
+      return user;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      this.logout();
+      return null;
+    }
+  }
+
+  static logout() {
+    // Clear in-memory token and user data
+    this.currentToken = null;
+    this.currentUserData = null;
+    console.log('User logged out, token cleared from memory');
+  }
+
+  static getStoredUser() {
+    return this.currentUserData;
+  }
+
+  static getToken() {
+    return this.currentToken;
+  }
 }
 
-// --- ROLE ACCESS CONTROL ---
+// --- DECISION MAKERS SYSTEM ---
+ class DecisionMakersService {
+  static async getDecisionMakers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/decision-makers`, {
+        headers: {
+          'Authorization': `Bearer ${AuthService.getToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch decision makers');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching decision makers:', error);
+      // Fallback to default structure
+      return this.getDefaultDecisionMakers();
+    }
+  } 
+
+  static getDefaultDecisionMakers() {
+    return {
+      decisionMakers: [
+        {
+          id: 'production_manager',
+          title: 'Production Manager',
+          name: 'John Smith',
+          email: 'production.manager@company.com',
+          level: 1,
+          canEscalateTo: 'operations_director',
+          role: 'supervisor'
+        },
+        {
+          id: 'operations_director', 
+          title: 'Operations Director',
+          name: 'Sarah Johnson',
+          email: 'operations.director@company.com',
+          level: 2,
+          canEscalateTo: 'country_manager',
+          role: 'admin'
+        },
+        {
+          id: 'country_manager',
+          title: 'Country Manager', 
+          name: 'Michael Chen',
+          email: 'country.manager@company.com',
+          level: 3,
+          canEscalateTo: null,
+          role: 'admin'
+        }
+      ],
+      leadEngineer: {
+        id: 'lead_engineer',
+        title: 'Lead Engineer',
+        name: 'Current User',
+        email: 'lead.engineer@company.com',
+        role: 'technician'
+      }
+    };
+  } 
+
+  static async updateDecisionMaker(id, updateData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/decision-makers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AuthService.getToken()}`
+        },
+        body: JSON.stringify(updateData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update decision maker');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating decision maker:', error);
+      throw error;
+    }
+  }
+} 
+
+// --- ROLE ACCESS CONTROL (Updated) ---
 const sectionRoles = {
   dashboard: ["admin", "supervisor", "technician"],
   wells: ["admin", "supervisor", "technician"],
   data: ["admin", "supervisor"],
   deviations: ["admin", "supervisor"],
-  reports: ["admin"], // Assuming only admin can see reports as per your initial setup
-  users: ["admin"]
+  reports: ["admin"],
+  users: ["admin"],
+  decisionMakers: ["admin"] // New section for managing decision makers
 };
 
-// --- SHOW/HIDE SECTIONS BASED ON ROLE ---
+// --- GLOBAL VARIABLES ---
+let currentUser = null;
+let decisionMakers = null;
+
+// --- ENHANCED SHOW/HIDE SECTIONS ---
 function showSection(section) {
+  // Hide all sections
   [
     'dashboardSection',
-    'wellsSection',
+    'wellsSection', 
     'dataSection',
     'deviationsSection',
     'reportsSection',
-    'usersSection'
+    'usersSection',
+    'decisionMakersSection' // New section
   ].forEach(id => {
-    if(document.getElementById(id)) document.getElementById(id).style.display = 'none';
+    const element = document.getElementById(id);
+    if (element) element.style.display = 'none';
   });
 
+  // Show selected section
   const sectionElement = document.getElementById(section + 'Section');
-  if(sectionElement) {
+  if (sectionElement) {
     sectionElement.style.display = '';
   } else {
     console.warn(`Section element ${section + 'Section'} not found.`);
   }
 
-  // Hide/show nav buttons by access
-  if (currentUser) {
-    for (let sec in sectionRoles) {
-      const btn = document.querySelector(`nav button[onclick*="showSection('${sec}')"]`); // More specific selector for nav buttons
-      if (btn) {
-        btn.style.display = sectionRoles[sec].includes(currentUser.role) ? '' : 'none';
-      }
-    }
-  }
+  // Update navigation visibility based on roles
+  updateNavigationAccess();
 
-  // Call initialization/rendering functions for the active section
-  if (section === "dashboard") {
-    if (typeof initDashboard === 'function') initDashboard();
-  } else if (section === "users") {
-    if (typeof renderUserManagement === 'function') renderUserManagement();
-  } else if (section === "wells") {
-    if (typeof renderWellsSection === 'function') renderWellsSection();
-  } else if (section === "data") {
-    // Assuming you have a function to initialize the data section, e.g., renderDataSection or similar
-    // if (typeof renderDataSection === 'function') renderDataSection();
-    // Or if renderDataMaaspChart is the main initializer for the data view:
-    if (typeof renderDataMaaspChart === 'function' && document.getElementById('dataMaaspWellSelect')?.value) {
-        // renderDataMaaspChart(); // Or call a general data section initializer
-    }
-  } else if (section === "deviations") {
-    if (typeof renderDeviationsSection === 'function') renderDeviationsSection();
-  }
-  // *** ADD THIS ELSE IF BLOCK FOR REPORTS ***
-  else if (section === "reports") {
-    if (typeof renderReportsSection === 'function') {
-      renderReportsSection();
-    } else {
-      console.error('renderReportsSection function is not defined!');
-      const reportsUI = document.getElementById('reportsUI');
-      if (reportsUI) reportsUI.innerHTML = "<p style='color:red; padding: 20px;'>Error: Could not initialize reports content (render function missing).</p>";
+  // Initialize section-specific functionality
+  initializeSection(section);
+}
+
+function updateNavigationAccess() {
+  if (!currentUser) return;
+
+  for (let sec in sectionRoles) {
+    const btn = document.querySelector(`nav button[onclick*="showSection('${sec}')"]`);
+    if (btn) {
+      btn.style.display = sectionRoles[sec].includes(currentUser.role) ? '' : 'none';
     }
   }
 }
 
-// --- SIGN UP LOGIC ---
+function initializeSection(section) {
+  switch(section) {
+    case "dashboard":
+      if (typeof initDashboard === 'function') initDashboard();
+      break;
+    case "users":
+      if (typeof renderUserManagement === 'function') renderUserManagement();
+      break;
+    case "wells":
+      if (typeof renderWellsSection === 'function') renderWellsSection();
+      break;
+    case "data":
+      if (typeof renderDataMaaspChart === 'function' && document.getElementById('dataMaaspWellSelect')?.value) {
+        renderDataMaaspChart();
+      }
+      break;
+    case "deviations":
+      if (typeof renderDeviationsSection === 'function') renderDeviationsSection();
+      break;
+    case "reports":
+      if (typeof renderReportsSection === 'function') {
+        renderReportsSection();
+      } else {
+        console.error('renderReportsSection function is not defined!');
+        const reportsUI = document.getElementById('reportsUI');
+        if (reportsUI) reportsUI.innerHTML = "<p style='color:red; padding: 20px;'>Error: Could not initialize reports content.</p>";
+      }
+      break;
+    case "decisionMakers":
+      if (typeof renderDecisionMakersSection === 'function') {
+        renderDecisionMakersSection();
+      }
+      break;
+  }
+}
+
+// --- ENHANCED LOGIN/LOGOUT FUNCTIONS ---
 function showSignUp() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('loginForm').style.display = 'none';
   document.getElementById('signupForm').style.display = '';
   document.getElementById('signupError').textContent = '';
 }
+
 function showLogin() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('loginForm').style.display = '';
@@ -107,147 +291,198 @@ function showLogin() {
   document.getElementById('loginError').textContent = '';
 }
 
-// --- LOG OUT ---
-function logout() {
+async function logout() {
+  try {
+    // Call logout endpoint if available
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AuthService.getToken()}`
+      }
+    });
+  } catch (error) {
+    console.error('Logout API call failed:', error);
+  }
+
+  AuthService.logout();
   currentUser = null;
-  localStorage.removeItem('wimt-currentUser');
+  decisionMakers = null;
+  
   document.getElementById('mainMenu').style.display = 'none';
   document.querySelector('main').style.display = 'none';
+  
+  // Clear form fields but don't store anything
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
+  
   showLogin();
 }
 
-// --- HASHING ---
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-function sha256Sync(str) { // This is a mock for simplicity in the example. Use proper crypto.
-  if (str === 'password') return "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8";
-  if (str === 'supervisor1') return "a4e5b4279d7c0b3e8c73b8a1a39d1ba5f6e6e3ef8f57a4e4c0a4df7e4f0c8e46";
-  if (str === 'tech1') return "dc1bffb696477ae4c1d6e6a7b1c2bf76d4e2c5b3a1e4c8b5f7e9c0a2e5c6d1b0";
-  // Fallback for other strings - NOT SECURE FOR PRODUCTION, just for example hashing.
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32bit integer
+// --- DECISION MAKERS INTEGRATION ---
+async function initializeDecisionMakers() {
+  try {
+    decisionMakers = await DecisionMakersService.getDecisionMakers();
+    
+    // Update lead engineer with current user info if they're a technician/engineer
+    if (currentUser && (currentUser.role === 'technician' || currentUser.title?.toLowerCase().includes('engineer'))) {
+      decisionMakers.leadEngineer.name = currentUser.email;
+      decisionMakers.leadEngineer.email = currentUser.email || `${currentUser.email}@company.com`;
+    }
+    
+    return decisionMakers;
+  } catch (error) {
+    console.error('Failed to initialize decision makers:', error);
+    decisionMakers = DecisionMakersService.getDefaultDecisionMakers();
+    return decisionMakers;
   }
-  return hash.toString(16);
 }
 
+// --- UTILITY FUNCTIONS ---
+function getUserByRole(role) {
+  if (!decisionMakers) return null;
+  
+  return decisionMakers.decisionMakers.find(dm => dm.role === role) || null;
+}
 
-// --- LOGIN/SIGNUP HANDLERS ---
-document.addEventListener('DOMContentLoaded', () => {
-  // If currentUser exists, show UI immediately without login
-  if (currentUser) {
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('mainMenu').style.display = '';
-    document.querySelector('main').style.display = '';
-    document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.username} (${currentUser.role})`;
-    showSection('dashboard'); // Show dashboard by default after login
-  } else {
-    document.getElementById('mainMenu').style.display = 'none';
-    document.querySelector('main').style.display = 'none';
-    showLogin();
-  }
+function getEscalationPath(currentLevel) {
+  if (!decisionMakers) return [];
+  
+  return decisionMakers.decisionMakers
+    .filter(dm => dm.level > currentLevel)
+    .sort((a, b) => a.level - b.level);
+}
 
-  // Login Logic
+function canUserApprove(deviation, user) {
+  if (!user || !decisionMakers) return false;
+  
+  // Check if user is in decision makers list
+  const isDecisionMaker = decisionMakers.decisionMakers.some(dm => 
+    dm.email === user.email || dm.name === user.email
+  );
+  
+  // Or check by role permissions
+  const hasRolePermission = ['admin', 'supervisor'].includes(user.role);
+  
+  return isDecisionMaker || hasRolePermission;
+}
+
+// --- MAIN INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', async () => {
+  // No stored session checking since we don't store anything locally
+  // Always show login on page load
+  showLogin();
+  setupEventHandlers();
+});
+
+async function initializeApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('mainMenu').style.display = '';
+  document.querySelector('main').style.display = '';
+  document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.email} (${currentUser.role})`;
+  
+  // Initialize decision makers
+  await initializeDecisionMakers();
+  
+  // Show dashboard by default
+  showSection('dashboard');
+}
+
+function setupEventHandlers() {
+  // Login form handler
   document.getElementById('loginForm').onsubmit = async function(e) {
     e.preventDefault();
-    const user = document.getElementById('loginUser').value.trim();
-    const pass = document.getElementById('loginPass').value.trim();
-    users = loadUsers(); // ensure users are loaded
-    const hash = await sha256(pass); // Use async sha256
-    const found = users.find(u => u.username === user && u.password === hash);
-    if (found) {
-      currentUser = found;
-      localStorage.setItem('wimt-currentUser', JSON.stringify(currentUser));
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('mainMenu').style.display = '';
-      document.querySelector('main').style.display = '';
-      document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.username} (${currentUser.role})`;
-      showSection('dashboard'); // Show dashboard by default after login
-    } else {
-      document.getElementById('loginError').textContent = 'Invalid username or password.';
+    const email = document.getElementById('loginUser').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+    try {
+      currentUser = await AuthService.login(email, password);
+      await initializeApp();
+    } catch (error) {
+      document.getElementById('loginError').textContent = 'Invalid email or password.';
     }
   };
 
-  // sign up logic
+  // Signup form handler
   document.getElementById('signupForm').onsubmit = async function(e) {
     e.preventDefault();
-    const user = document.getElementById('signupUser').value.trim();
-    const pass = document.getElementById('signupPass').value.trim();
+    const email = document.getElementById('signupUser').value.trim();
+    const password = document.getElementById('signupPass').value.trim();
     const role = document.getElementById('signupRole').value;
-    if (!user || !pass || !role) {
+    
+    if (!email || !password || !role) {
       document.getElementById('signupError').textContent = 'Fill all fields.';
       return;
     }
-    users = loadUsers(); // ensure users are loaded
-    if (users.find(u => u.username === user)) {
-      document.getElementById('signupError').textContent = 'Username already exists.';
-      return;
+
+    try {
+      await AuthService.register({ email, password, role });
+      document.getElementById('signupError').textContent = 'User created. Please log in.';
+      setTimeout(showLogin, 1500);
+    } catch (error) {
+      document.getElementById('signupError').textContent = error.message || 'Registration failed.';
     }
-    const hash = await sha256(pass); // Use async sha256
-    users.push({ username: user, password: hash, role });
-    saveUsers(users);
-    document.getElementById('signupError').textContent = 'User created. Please log in.';
-    setTimeout(showLogin, 1500);
   };
 
-  // Switch between login and signup
+  // Navigation handlers
   document.getElementById('toSignupBtn').onclick = showSignUp;
   document.getElementById('toLoginBtn').onclick = showLogin;
-
-  // Log out
   document.getElementById('logoutBtn').onclick = logout;
 
-  // KPI/Action Panel toggle
+  // KPI Dashboard handlers
   const showKPIDashboardBtn = document.getElementById('showKPIDashboardBtn');
   const kpiDashboardPanel = document.getElementById('kpiDashboardPanel');
   const closeKPIDashboardBtn = document.getElementById('closeKPIDashboardBtn');
 
-  if(showKPIDashboardBtn && kpiDashboardPanel) {
-    showKPIDashboardBtn.onclick = function() {
-      kpiDashboardPanel.style.display = 'block';
-    };
+  if (showKPIDashboardBtn && kpiDashboardPanel) {
+    showKPIDashboardBtn.onclick = () => kpiDashboardPanel.style.display = 'block';
   }
-  if(closeKPIDashboardBtn && kpiDashboardPanel) {
-    closeKPIDashboardBtn.onclick = function() {
-      kpiDashboardPanel.style.display = 'none';
-    };
+  if (closeKPIDashboardBtn && kpiDashboardPanel) {
+    closeKPIDashboardBtn.onclick = () => kpiDashboardPanel.style.display = 'none';
   }
-  
-  // Remove placeholder content if actual rendering functions will take over
-  // document.getElementById('wellList').innerHTML = ''; // Cleared by renderWellsSection
-  // document.getElementById('wellDetails').innerHTML = ''; // Managed by wellsection.js
-  // document.getElementById('testHistory').innerHTML = ''; // etc.
-  // document.getElementById('maintenanceBacklog').innerHTML = '';
-  // document.getElementById('pressureTrends').innerHTML = '';
-  // document.getElementById('deviationsList').innerHTML = ''; // Cleared by renderDeviationsSection
-  document.getElementById('reportsUI').innerHTML = ''; // Will be cleared by renderReportsSection
-  // document.getElementById('usersUI').innerHTML = ''; // Cleared by renderUserManagement
 
-  // what is this? // This is for closing modals by clicking outside of them.
+  // Modal close handlers
+  setupModalHandlers();
+}
+
+function setupModalHandlers() {
   document.addEventListener('mousedown', function (e) {
-    ['wellDetailsModal', 'addWellModal', 'editWellModal', 'identificationFormModal', 'confirmDeleteWellModal', 'dispensationModal', 'approveDispensationModal', 'extendDispensationModal', 'valveWizardModal'].forEach(modalId => {
+    const modalIds = [
+      'wellDetailsModal', 'addWellModal', 'editWellModal', 
+      'identificationFormModal', 'confirmDeleteWellModal', 
+      'dispensationModal', 'approveDispensationModal', 
+      'extendDispensationModal', 'valveWizardModal'
+    ];
+
+    modalIds.forEach(modalId => {
       const modal = document.getElementById(modalId);
       if (!modal || modal.style.display === 'none') return;
-      const content = modal.querySelector('.modal-content') || modal.querySelector('.valve-wizard-content'); // Handle different modal content classes
-      if (content && !content.contains(e.target) && !e.target.closest('.valve-wizard-close')) { // Ensure close button itself doesn't trigger this
-        // Call specific close functions for each modal if they exist
-        if (modalId === 'identificationFormModal' && typeof closeIdentificationFormModal === 'function') closeIdentificationFormModal();
-        else if (modalId === 'confirmDeleteWellModal' && document.getElementById('cancelDeleteWellBtn')) document.getElementById('cancelDeleteWellBtn').click(); // Simulate cancel click
-        else if (modalId === 'dispensationModal' && typeof closeDispensationModal === 'function') closeDispensationModal();
-        else if (modalId === 'approveDispensationModal' && typeof closeApproveDispensationModal === 'function') closeApproveDispensationModal();
-        else if (modalId === 'extendDispensationModal' && typeof closeExtendDispensationModal === 'function') closeExtendDispensationModal();
-        else if (modalId === 'valveWizardModal' && typeof closeValveWizard === 'function') closeValveWizard();
-        // Add other specific modal close handlers here if needed
-        // else {
-        //   modal.style.display = 'none'; // Generic hide if no specific closer
-        // }
+      
+      const content = modal.querySelector('.modal-content') || modal.querySelector('.valve-wizard-content');
+      if (content && !content.contains(e.target) && !e.target.closest('.valve-wizard-close')) {
+        // Call specific close functions
+        const closeFunctions = {
+          'identificationFormModal': 'closeIdentificationFormModal',
+          'dispensationModal': 'closeDispensationModal',
+          'approveDispensationModal': 'closeApproveDispensationModal',
+          'extendDispensationModal': 'closeExtendDispensationModal',
+          'valveWizardModal': 'closeValveWizard'
+        };
+
+        const closeFunction = closeFunctions[modalId];
+        if (closeFunction && typeof window[closeFunction] === 'function') {
+          window[closeFunction]();
+        } else if (modalId === 'confirmDeleteWellModal') {
+          const cancelBtn = document.getElementById('cancelDeleteWellBtn');
+          if (cancelBtn) cancelBtn.click();
+        }
       }
     });
   });
-});
+}
+
+// --- EXPORT FOR USE IN OTHER MODULES ---
+window.AuthService = AuthService;
+window.DecisionMakersService = DecisionMakersService;
+window.currentUser = () => currentUser;
+window.decisionMakers = () => decisionMakers;
+window.canUserApprove = canUserApprove;
+window.getEscalationPath = getEscalationPath;
