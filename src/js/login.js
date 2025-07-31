@@ -97,91 +97,9 @@ class AuthService {
   }
 }
 
-// --- DECISION MAKERS SYSTEM ---
- class DecisionMakersService {
-  static async getDecisionMakers() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/decision-makers`, {
-        headers: {
-          'Authorization': `Bearer ${AuthService.getToken()}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch decision makers');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching decision makers:', error);
-      // Fallback to default structure
-      return this.getDefaultDecisionMakers();
-    }
-  } 
 
-  static getDefaultDecisionMakers() {
-    return {
-      decisionMakers: [
-        {
-          id: 'production_manager',
-          title: 'Production Manager',
-          name: 'John Smith',
-          email: 'production.manager@company.com',
-          level: 1,
-          canEscalateTo: 'operations_director',
-          role: 'supervisor'
-        },
-        {
-          id: 'operations_director', 
-          title: 'Operations Director',
-          name: 'Sarah Johnson',
-          email: 'operations.director@company.com',
-          level: 2,
-          canEscalateTo: 'country_manager',
-          role: 'admin'
-        },
-        {
-          id: 'country_manager',
-          title: 'Country Manager', 
-          name: 'Michael Chen',
-          email: 'country.manager@company.com',
-          level: 3,
-          canEscalateTo: null,
-          role: 'admin'
-        }
-      ],
-      leadEngineer: {
-        id: 'lead_engineer',
-        title: 'Lead Engineer',
-        name: 'Current User',
-        email: 'lead.engineer@company.com',
-        role: 'technician'
-      }
-    };
-  } 
 
-  static async updateDecisionMaker(id, updateData) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/decision-makers/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AuthService.getToken()}`
-        },
-        body: JSON.stringify(updateData)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update decision maker');
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating decision maker:', error);
-      throw error;
-    }
-  }
-} 
+
 
 // --- ROLE ACCESS CONTROL (Updated) ---
 const sectionRoles = {
@@ -481,7 +399,6 @@ function setupModalHandlers() {
 
 // --- EXPORT FOR USE IN OTHER MODULES ---
 window.AuthService = AuthService;
-window.DecisionMakersService = DecisionMakersService;
 window.currentUser = () => currentUser;
 window.decisionMakers = () => decisionMakers;
 window.canUserApprove = canUserApprove;

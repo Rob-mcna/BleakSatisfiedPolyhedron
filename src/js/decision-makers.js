@@ -11,7 +11,7 @@ class EscalationSystem {
     this.escalations = window.activeEscalations;
   }
 
-  createEscalation(wellName, valveId, failureDetails, userInitiated = false) {
+  async createEscalation(wellName, valveId, failureDetails, userInitiated = false) {
     const escalation = {
       id: `ESC-${Date.now()}-${window.escalationIdCounter++}`,
       wellName,
@@ -27,34 +27,103 @@ class EscalationSystem {
       acknowledgedAt: null,
       resolvedAt: null
     };
+
+    // Add the escalation to the local array
     this.escalations.push(escalation);
+
+    // Log the creation
     console.log(`Created escalation ${escalation.id} for ${wellName} - ${valveId}`, escalation);
+
+    // Update dashboard indicators
     this.updateDashboardEscalationIndicators();
-    updateEscalationButtonCount(); // <--- Add this
+
+    // Send the escalation to the backend database
+    await this.sendEscalationToDatabase(escalation);
+
     return escalation;
   }
 
-  acknowledgeEscalation(id, comment = '') {
-    const esc = this.escalations.find(e => e.id === id);
-    if (esc) {
-      esc.acknowledgedAt = new Date();
-      esc.status = 'acknowledged';
-      if (comment) esc.comments.push({ text: comment, author: window.currentUser?.login || 'user', timestamp: new Date() });
-      this.updateDashboardEscalationIndicators();
-      updateEscalationButtonCount(); // <--- Add this
+  async sendEscalationToDatabase(escalation) {
+    try {
+      const response = await fetch('http://your-backend-api.com/api/escalations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(escalation)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save escalation to database: ${response.status}`);
+      }
+
+      console.log('Escalation saved to database:', await response.json());
+    } catch (error) {
+      console.error('Error saving escalation to database:', error);
     }
   }
 
-  resolveEscalation(id, resolution = '') {
-    const esc = this.escalations.find(e => e.id === id);
-    if (esc) {
-      esc.resolvedAt = new Date();
-      esc.status = 'resolved';
-      if (resolution) esc.comments.push({ text: `Resolution: ${resolution}`, author: window.currentUser?.login || 'user', timestamp: new Date() });
-      this.updateDashboardEscalationIndicators();
-      updateEscalationButtonCount(); // <--- Add this
+async acknowledgeEscalation(id, comment = '') {
+  const esc = this.escalations.find(e => e.id === id);
+  if (esc) {
+    esc.acknowledgedAt = new Date();
+    esc.status = 'acknowledged';
+    if (comment) {
+      esc.comments.push({
+        text: comment,
+        author: window.currentUser?.login || 'user',
+        timestamp: new Date()
+      });
     }
+
+    // Update dashboard indicators
+    this.updateDashboardEscalationIndicators();
+
+    // Send the updated escalation to the backend
+    await this.updateEscalationInDatabase(esc);
   }
+}
+
+async resolveEscalation(id, resolution = '') {
+  const esc = this.escalations.find(e => e.id === id);
+  if (esc) {
+    esc.resolvedAt = new Date();
+    esc.status = 'resolved';
+    if (resolution) {
+      esc.comments.push({
+        text: `Resolution: ${resolution}`,
+        author: window.currentUser?.login || 'user',
+        timestamp: new Date()
+      });
+    }
+
+    // Update dashboard indicators
+    this.updateDashboardEscalationIndicators();
+
+    // Send the updated escalation to the backend
+    await this.updateEscalationInDatabase(esc);
+  }
+}
+
+async updateEscalationInDatabase(escalation) {
+  try {
+    const response = await fetch(`http://your-backend-api.com/api/escalations/${escalation.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(escalation)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update escalation in database: ${response.status}`);
+    }
+
+    console.log('Escalation updated in database:', await response.json());
+  } catch (error) {
+    console.error('Error updating escalation in database:', error);
+  }
+}
 
 
   getPriorityFromTrafficLight(trafficLight) {
