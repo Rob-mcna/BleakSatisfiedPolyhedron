@@ -530,8 +530,7 @@ function getLiveStatusForAllRingsWithEscalation(well) {
       message: `${failureInfo.failureReason} - ${matrixDescription}`,
       failureCode: failureCode,
       matrixCategory: matrixCategory,
-      trafficLight: trafficLight,
-      valveId: failureInfo.valveId 
+      trafficLight: trafficLight
     });
   });
 
@@ -550,7 +549,103 @@ function getWellTypeKey(wellType) {
 }
 // --- MATRIX-AWARE DASHBOARD RENDER ---
 // --- MATRIX-AWARE DASHBOARD RENDER (Modified) ---
+function renderMultiRingDashboard() {
+  const container = document.getElementById('wellMultiRingBoard');
+  if (!container) {
+    console.error("Dashboard container 'wellMultiRingBoard' not found.");
+    return;
+  }
 
+  const filtered = deduplicateWellsById(wells);
+  container.innerHTML = '';
+  
+  if (filtered.length === 0) {
+    container.innerHTML = "<p style='color:#ccc; text-align:center;'>No well data available.</p>";
+    return;
+  }
+
+  let wellsMatchingMatrix = 0;
+
+  filtered.forEach(well => {
+    if (!well || typeof well.name === 'undefined') return;
+
+    const testResults = window.valveTestResults && window.valveTestResults[well.name];
+
+    // --- ONLY SHOW wells that match the matrix (have failures) ---
+    if (!matchesMatrix(well, testResults)) {
+      console.log(`Well ${well.name} does not match matrix conditions - skipping dashboard display`);
+      return; // Skip this well, do NOT render it.
+    }
+
+    wellsMatchingMatrix++;
+    console.log(`Well ${well.name} matches matrix conditions - displaying in dashboard`);
+
+    // ... rest of the existing rendering code remains the same ...
+    const ringData = getLiveStatusForAllRingsWithEscalation(well);
+    const totalRings = ringData.length;
+    const maxRadius = 44;
+    const minRadius = 9;
+    const strokeWidth = 2;
+    const gap = 2;
+
+    const totalRequiredSpace = totalRings * strokeWidth + Math.max(0, totalRings - 1) * gap;
+    const availableDrawingRadius = maxRadius - minRadius;
+
+    let effectiveSpacing;
+    if (totalRings <= 1) {
+      effectiveSpacing = 0;
+    } else {
+      const availableRadiusForCenters = maxRadius - minRadius - strokeWidth;
+      effectiveSpacing = availableRadiusForCenters / Math.max(1, totalRings - 1);
+    }
+
+    const dynamicRadii = ringData.map((_, idx) => maxRadius - strokeWidth / 2 - (idx * effectiveSpacing));
+    const validRadii = dynamicRadii.filter(r => r > strokeWidth / 2);
+
+    const ringsHtml = validRadii.map((radius, idx) => {
+      const originalRingIndex = dynamicRadii.indexOf(radius);
+      if (originalRingIndex !== -1 && ringData[originalRingIndex]) {
+        return `<circle cx="45" cy="45" r="${radius}" stroke="${colorMap(ringData[originalRingIndex].color)}" stroke-width="${strokeWidth}" fill="none" />`;
+      }
+      return '';
+    }).join('');
+
+    const centerCircleRadius = Math.max(minRadius, (validRadii.length > 0 ? validRadii[validRadii.length - 1] - strokeWidth / 2 : minRadius));
+    const centerFill = '#71c4e6ff'; // Always use your blue
+    const svg = `<svg width="90" height="90" style="display:block">
+      ${ringsHtml}
+      <circle cx="45" cy="45" r="${centerCircleRadius}" fill="${centerFill}" />
+    </svg>`;
+    const div = document.createElement('div');
+    div.className = "well-multiring";
+    div.style.background = "transparent";
+    div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
+
+    div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length))
+    div.onmouseleave = hideTooltip;
+
+    div.onclick = () => {
+      if (typeof showSection === "function") {
+        showSection('wells');
+        setTimeout(() => {
+          const wellDropdown = document.getElementById('wellDropdown');
+          if (wellDropdown) {
+            wellDropdown.value = well.name;
+            wellDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, 100);
+      }
+    };
+    container.appendChild(div);
+  });
+
+  // Show message if no wells match matrix conditions
+  if (wellsMatchingMatrix === 0) {
+    container.innerHTML = "<p style='color:#ccc; text-align:center;'>No wells with failed tests to display.</p>";
+  }
+
+  console.log(`Dashboard: Displaying ${wellsMatchingMatrix} wells that match matrix conditions`);
+}
 function colorMap(color) {
   const map = { red: "#e64a3a", orange: "#ff9800", yellow: "#e6c23a", green: "#19d219" };
   return map[color] || "#999";
@@ -737,12 +832,7 @@ function showTooltip(e, well, div, ringData) {
 let hideTimeout = null;
 let currentTooltip = null;
 
-function showTooltipBox(x, y, html, ringInfo = null, wellName = null) {
-  // Store well name for click handler
-  if (wellName) {
-    window.currentTooltipWellName = wellName;
-  }
-  
+function showTooltipBox(x, y, html, ringInfo = null) {
   // Clear any existing hide timeout
   if (hideTimeout) {
     clearTimeout(hideTimeout);
@@ -804,7 +894,7 @@ function showTooltipBox(x, y, html, ringInfo = null, wellName = null) {
   if (ringInfo && ringInfo.failureCode) {
     t.onclick = function(event) {
       event.stopPropagation();
-      showDetailedFailureModal(ringInfo, wellName || window.currentTooltipWellName);
+      showDetailedFailureModal(ringInfo);
     };
   }
 }
@@ -840,9 +930,7 @@ function hideTooltip() {
 
 // Add this helper function to handle mouse movement more smoothly
 function handleWellHover(e, well, div, ringData) {
-  // Ensure well context is available
-  window.currentDashboardWell = well;
-  
+  // Throttle the tooltip updates to prevent flickering
   if (!div._tooltipThrottle) {
     div._tooltipThrottle = true;
     setTimeout(() => {
@@ -852,16 +940,12 @@ function handleWellHover(e, well, div, ringData) {
   }
 }
 
-
 // Update the mouse event handlers in your renderMultiRingDashboard function
 // Replace the existing onmousemove assignment with:
 // div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length));
 // New function to show detailed failure information in a modal
-/*function showDetailedFailureModal(ringInfo, wellName = null) {
-  // If wellName not provided, try to get from global context
-  if (!wellName) {
-    wellName = window.currentDashboardWell?.name || window.currentTooltipWellName || 'Unknown Well';
-  } // Remove existing modal if present
+function showDetailedFailureModal(ringInfo) {
+  // Remove existing modal if present
   const existingModal = document.getElementById('failureDetailModal');
   if (existingModal) {
     existingModal.remove();
@@ -963,7 +1047,7 @@ function handleWellHover(e, well, div, ringData) {
     }
   };
   document.addEventListener('keydown', escapeHandler);
-} */
+}
 
 // Helper function to get matrix failure details
 function getMatrixFailureDetails(category, failureNumber) {
@@ -1278,11 +1362,7 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     div.className = "well-multiring";
     div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
 
-    div.onmousemove = (e) => {
-  // Store well context globally for tooltip system
-      window.currentDashboardWell = well;
-      handleWellHover(e, well, div, displayRings.slice(0, validRadii.length));
-    };
+    div.onmousemove = (e) => handleWellHover(e, well, div, displayRings.slice(0, validRadii.length));
     div.onmouseleave = hideTooltip;
 
     div.onclick = () => {
@@ -1299,7 +1379,6 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     };
     
     container.appendChild(div);
-    addEscalationIndicatorToWell(div, well.name);
   });
 
   console.log(`Dashboard: Displaying ${filteredWells.length} wells with filter: ${filterOption}`);
@@ -1349,7 +1428,6 @@ function updateFilteredKPIs(filterOption) {
 function renderMultiRingDashboardWithFilter() {
   // Create dropdown if it doesn't exist
   createDashboardFilterDropdown();
-  addEscalationManagementButton();
   
   // Get current filter value or default to 'with-failures'
   const filterSelect = document.getElementById('dashboardFilter');
@@ -1421,40 +1499,6 @@ function fetchWellsAndSyncResultsWithFilter() {
     });
 }
 
-function testEscalation() {
-  // Create a test escalation to verify the system works
-  const testFailureDetails = {
-    failureReason: "Test valve failure",
-    failureCode: 9,
-    matrixCategory: 'singleSurfaceFailure',
-    trafficLight: 'red',
-    matrixDescription: 'Make well safe immediately',
-    wellType: 'Producer',
-    timestamp: new Date()
-  };
-  
-  const escalation = window.escalationSystem.createEscalation('TEST_WELL', 'TEST_VALVE', testFailureDetails, true);
-  console.log('Test escalation created:', escalation);
-  
-  // Update dashboard to show the escalation
-  window.escalationSystem.updateDashboardEscalationIndicators();
-  
-  return escalation;
-}
-
-// 8. Add debug logging to trace escalation flow
-function debugEscalationFlow() {
-  console.log('=== ESCALATION DEBUG INFO ===');
-  console.log('Current well context:', window.currentDashboardWell);
-  console.log('Current tooltip well:', window.currentTooltipWellName);
-  console.log('Active escalations:', window.escalationSystem.escalations);
-  console.log('Escalation system:', window.escalationSystem);
-}
-
-// Make functions available globally for debugging
-window.testEscalation = testEscalation;
-window.debugEscalationFlow = debugEscalationFlow;
-
 // Update window exports
 window.renderMultiRingDashboard = renderMultiRingDashboardWithFilter;
 window.fetchWellsAndSyncResults = fetchWellsAndSyncResultsWithFilter;
@@ -1465,6 +1509,9 @@ window.onload = function() {
     console.log(`Dashboard: Initializing for user: ${window.currentUser.login}`);
     fetchWellsAndSyncResults();
 };
+
+window.renderMultiRingDashboard = renderMultiRingDashboard;
+window.fetchWellsAndSyncResults = fetchWellsAndSyncResults;
 window.runIntegrityTestAndRefreshDashboard = runIntegrityTestAndRefreshDashboard;
 window.fetchValveTestResults = fetchValveTestResults;
 window.getLiveStatusForAllRingsWithEscalation = getLiveStatusForAllRingsWithEscalation;

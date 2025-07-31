@@ -550,7 +550,103 @@ function getWellTypeKey(wellType) {
 }
 // --- MATRIX-AWARE DASHBOARD RENDER ---
 // --- MATRIX-AWARE DASHBOARD RENDER (Modified) ---
+function renderMultiRingDashboard() {
+  const container = document.getElementById('wellMultiRingBoard');
+  if (!container) {
+    console.error("Dashboard container 'wellMultiRingBoard' not found.");
+    return;
+  }
 
+  const filtered = deduplicateWellsById(wells);
+  container.innerHTML = '';
+  
+  if (filtered.length === 0) {
+    container.innerHTML = "<p style='color:#ccc; text-align:center;'>No well data available.</p>";
+    return;
+  }
+
+  let wellsMatchingMatrix = 0;
+
+  filtered.forEach(well => {
+    if (!well || typeof well.name === 'undefined') return;
+
+    const testResults = window.valveTestResults && window.valveTestResults[well.name];
+
+    // --- ONLY SHOW wells that match the matrix (have failures) ---
+    if (!matchesMatrix(well, testResults)) {
+      console.log(`Well ${well.name} does not match matrix conditions - skipping dashboard display`);
+      return; // Skip this well, do NOT render it.
+    }
+
+    wellsMatchingMatrix++;
+    console.log(`Well ${well.name} matches matrix conditions - displaying in dashboard`);
+
+    // ... rest of the existing rendering code remains the same ...
+    const ringData = getLiveStatusForAllRingsWithEscalation(well);
+    const totalRings = ringData.length;
+    const maxRadius = 44;
+    const minRadius = 9;
+    const strokeWidth = 2;
+    const gap = 2;
+
+    const totalRequiredSpace = totalRings * strokeWidth + Math.max(0, totalRings - 1) * gap;
+    const availableDrawingRadius = maxRadius - minRadius;
+
+    let effectiveSpacing;
+    if (totalRings <= 1) {
+      effectiveSpacing = 0;
+    } else {
+      const availableRadiusForCenters = maxRadius - minRadius - strokeWidth;
+      effectiveSpacing = availableRadiusForCenters / Math.max(1, totalRings - 1);
+    }
+
+    const dynamicRadii = ringData.map((_, idx) => maxRadius - strokeWidth / 2 - (idx * effectiveSpacing));
+    const validRadii = dynamicRadii.filter(r => r > strokeWidth / 2);
+
+    const ringsHtml = validRadii.map((radius, idx) => {
+      const originalRingIndex = dynamicRadii.indexOf(radius);
+      if (originalRingIndex !== -1 && ringData[originalRingIndex]) {
+        return `<circle cx="45" cy="45" r="${radius}" stroke="${colorMap(ringData[originalRingIndex].color)}" stroke-width="${strokeWidth}" fill="none" />`;
+      }
+      return '';
+    }).join('');
+
+    const centerCircleRadius = Math.max(minRadius, (validRadii.length > 0 ? validRadii[validRadii.length - 1] - strokeWidth / 2 : minRadius));
+    const centerFill = '#71c4e6ff'; // Always use your blue
+    const svg = `<svg width="90" height="90" style="display:block">
+      ${ringsHtml}
+      <circle cx="45" cy="45" r="${centerCircleRadius}" fill="${centerFill}" />
+    </svg>`;
+    const div = document.createElement('div');
+    div.className = "well-multiring";
+    div.style.background = "transparent";
+    div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
+
+    div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length))
+    div.onmouseleave = hideTooltip;
+
+    div.onclick = () => {
+      if (typeof showSection === "function") {
+        showSection('wells');
+        setTimeout(() => {
+          const wellDropdown = document.getElementById('wellDropdown');
+          if (wellDropdown) {
+            wellDropdown.value = well.name;
+            wellDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, 100);
+      }
+    };
+    container.appendChild(div);
+  });
+
+  // Show message if no wells match matrix conditions
+  if (wellsMatchingMatrix === 0) {
+    container.innerHTML = "<p style='color:#ccc; text-align:center;'>No wells with failed tests to display.</p>";
+  }
+
+  console.log(`Dashboard: Displaying ${wellsMatchingMatrix} wells that match matrix conditions`);
+}
 function colorMap(color) {
   const map = { red: "#e64a3a", orange: "#ff9800", yellow: "#e6c23a", green: "#19d219" };
   return map[color] || "#999";
@@ -1465,6 +1561,7 @@ window.onload = function() {
     console.log(`Dashboard: Initializing for user: ${window.currentUser.login}`);
     fetchWellsAndSyncResults();
 };
+window.fetchWellsAndSyncResults = fetchWellsAndSyncResults;
 window.runIntegrityTestAndRefreshDashboard = runIntegrityTestAndRefreshDashboard;
 window.fetchValveTestResults = fetchValveTestResults;
 window.getLiveStatusForAllRingsWithEscalation = getLiveStatusForAllRingsWithEscalation;

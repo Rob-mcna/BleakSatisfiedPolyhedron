@@ -14,48 +14,28 @@ class EscalationSystem {
   createEscalation(wellName, valveId, failureDetails, userInitiated = false) {
     const escalation = {
       id: `ESC-${Date.now()}-${window.escalationIdCounter++}`,
-      wellName,
-      valveId,
-      failureDetails,
+      wellName: wellName,
+      valveId: valveId,
+      failureDetails: failureDetails,
       status: 'open',
       priority: this.getPriorityFromTrafficLight(failureDetails.trafficLight),
       createdAt: new Date(),
       createdBy: window.currentUser?.login || 'system',
-      userInitiated,
+      userInitiated: userInitiated,
       escalatedTo: this.determineSuperior(),
       comments: [],
       acknowledgedAt: null,
       resolvedAt: null
     };
+
     this.escalations.push(escalation);
-    console.log(`Created escalation ${escalation.id} for ${wellName} - ${valveId}`, escalation);
+    console.log(`Created escalation ${escalation.id} for ${wellName} - ${valveId}`);
+    
+    // Update dashboard to show escalation status
     this.updateDashboardEscalationIndicators();
-    updateEscalationButtonCount(); // <--- Add this
+    
     return escalation;
   }
-
-  acknowledgeEscalation(id, comment = '') {
-    const esc = this.escalations.find(e => e.id === id);
-    if (esc) {
-      esc.acknowledgedAt = new Date();
-      esc.status = 'acknowledged';
-      if (comment) esc.comments.push({ text: comment, author: window.currentUser?.login || 'user', timestamp: new Date() });
-      this.updateDashboardEscalationIndicators();
-      updateEscalationButtonCount(); // <--- Add this
-    }
-  }
-
-  resolveEscalation(id, resolution = '') {
-    const esc = this.escalations.find(e => e.id === id);
-    if (esc) {
-      esc.resolvedAt = new Date();
-      esc.status = 'resolved';
-      if (resolution) esc.comments.push({ text: `Resolution: ${resolution}`, author: window.currentUser?.login || 'user', timestamp: new Date() });
-      this.updateDashboardEscalationIndicators();
-      updateEscalationButtonCount(); // <--- Add this
-    }
-  }
-
 
   getPriorityFromTrafficLight(trafficLight) {
     const priorityMap = {
@@ -513,25 +493,14 @@ function addEscalationManagementButton() {
       font-size: 14px;
       margin-left: 10px;
     `;
+    
+    const activeCount = window.escalationSystem.escalations.filter(e => e.status !== 'resolved').length;
+    escalationBtn.innerHTML = `🚨 Escalations (${activeCount})`;
     escalationBtn.title = 'View and manage all escalations';
     
-    // Set onclick first
     escalationBtn.onclick = () => showEscalationManagementModal();
     
-    // Add to DOM immediately
     filterContainer.appendChild(escalationBtn);
-
-    // Now update the text
-    updateEscalationButtonCount();
-  }
-}
-
-// NEW: Update the button text anytime escalations change
-function updateEscalationButtonCount() {
-  const btn = document.getElementById('globalEscalationBtn');
-  if (btn) {
-    const activeCount = window.escalationSystem.escalations.filter(e => e.status !== 'resolved').length;
-    btn.innerHTML = `🚨 Escalations (${activeCount})`;
   }
 }
 
@@ -575,4 +544,3 @@ window.escalationSystem = window.escalationSystem;
 window.showEscalationManagementModal = showEscalationManagementModal;
 window.addEscalationIndicatorToWell = addEscalationIndicatorToWell;
 window.addEscalationManagementButton = addEscalationManagementButton;
-window.updateEscalationButtonCount = updateEscalationButtonCount;
