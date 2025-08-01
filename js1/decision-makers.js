@@ -285,14 +285,6 @@ async resolveEscalation(id, resolution = '') {
     );
   }
 
-  getEscalationForValve(wellName, valveId) {
-    return this.escalations.find(e => 
-      e.wellName === wellName && 
-      e.valveId === valveId && 
-      (e.status === 'open' || e.status === 'acknowledged')
-    );
-  }
-
   updateDashboardEscalationIndicators() {
     // Trigger dashboard re-render to show escalation indicators
     const currentFilter = document.getElementById('dashboardFilter')?.value || 'with-failures';
@@ -309,7 +301,13 @@ function getTrafficLightFromCode(failureCode) {
 window.escalationSystem = window.escalationSystem || new EscalationSystem();
 
 // Auto-escalation function for critical failures
-
+window.autoEscalateFailedValve = function(wellName, valveId, failureDetails) {
+  // Only auto-escalate critical failures (red traffic light)
+  if (failureDetails.trafficLight === 'red') {
+    return window.escalationSystem.createEscalation(wellName, valveId, failureDetails, false);
+  }
+  return null;
+};
 
 // Check if escalation is needed (prevent duplicates)
 function checkIfShouldEscalate(wellName, valveId, failureDetails) {
@@ -326,177 +324,208 @@ function checkIfShouldEscalate(wellName, valveId, failureDetails) {
 // =================== DASHBOARD UI MODIFICATIONS ===================
 
 // Modified showDetailedFailureModal to include escalation options
-
-// Modified showDetailedFailureModal to remove manual escalation
-/**
- * Displays a detailed modal for a specific valve failure.
- * It checks if the failure has already been escalated and updates the UI accordingly.
- *
- * @param {object} ringInfo - An object containing details about the failed ring (label, color, message, failureCode, etc.).
- * @param {string} wellName - The name of the well where the failure occurred.
- */
 function showDetailedFailureModal(ringInfo, wellName) {
-  // 1. Remove any modal that might already be open
+  // Remove existing modal if present
+
+
   const existingModal = document.getElementById('failureDetailModal');
   if (existingModal) {
     existingModal.remove();
   }
-
-  // 2. Check if an escalation already exists for this specific valve
-  const existingEscalation = window.escalationSystem.getEscalationForValve(wellName, ringInfo.valveId);
-
-  // 3. Create the modal structure
+  
+  // Ensure we have a well name - use global context if not provided
+  if (!wellName && window.currentWellContext && window.currentWellContext.name) {
+    wellName = window.currentWellContext.name;
+    console.log('Using well name from current context:', wellName);
+  }
+  
+  if (!wellName) {
+    console.error('Cannot show modal: Missing well name');
+    showTemporaryMessage('Cannot show details: Well information missing', 'error');
+    return;
+  }
+  
+  // Store well name in a data attribute for the modal
   const backdrop = document.createElement('div');
   backdrop.id = 'failureDetailModal';
+  backdrop.setAttribute('data-well-name', wellName);
+  
+  // Check for existing escalations
+  const activeEscalations = window.escalationSystem.getActiveEscalationsForWell(wellName);
+  const hasActiveEscalation = activeEscalations.some(e => e.valveId === ringInfo.valveId);
+  console.log('ringInfo:', ringInfo, 'wellName:', wellName, 'activeEscalations:', activeEscalations);
+  
+  // Create modal backdrop
+
+ 
   backdrop.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.75); z-index: 2000; display: flex;
-    align-items: center; justify-content: center; backdrop-filter: blur(5px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   `;
-
-  const modal = document.createElement('div');
-  modal.style.cssText = `
-    background: #ffffff; color: #333; border-radius: 8px; padding: 24px;
-    width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto;
-    position: relative; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-    border-top: 5px solid ${getColorForCode(ringInfo.failureCode)};
-  `;
-
-  // 4. Get supplementary details from the failure matrix
+  
+  // Get failure details from matrix
   const mitigatingAction = window.wellFailureModel.getMitigatingAction(ringInfo.failureCode);
   const matrixFailure = getMatrixFailureDetails(ringInfo.matrixCategory, ringInfo.failureNumber);
-
-  // 5. Construct the complete inner HTML for the modal
+  
+  // Create modal content with escalation section
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  `;
+  
   modal.innerHTML = `
-    <!-- Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-      <h3 style="margin: 0; font-size: 1.5em;">Failure Details: ${ringInfo.label} (${wellName})</h3>
-      <button id="closeModal" title="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
-    </div>
-
-    <!-- Failure Information Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-      <div>
-        <h4 style="margin: 0 0 8px 0;">Failure Code & Category</h4>
-        <p style="margin: 0;">Code ${ringInfo.failureCode} (${formatCategoryName(ringInfo.matrixCategory)})</p>
-      </div>
-      <div>
-        <h4 style="margin: 0 0 8px 0;">Traffic Light Status</h4>
-        <p style="margin: 0; text-transform: capitalize; font-weight: bold; color: ${getColorForCode(ringInfo.failureCode)};">
-          ${mitigatingAction ? mitigatingAction.trafficLight.toUpperCase() : 'Unknown'}
-        </p>
-      </div>
+      <h3 style="margin: 0; color: #333;">Failure Details - ${ringInfo.label}</h3>
+      <button id="closeModal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
     </div>
     
-    <!-- Detailed Descriptions -->
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0;">Matrix Failure Description:</h4>
-      <p style="margin: 0; line-height: 1.5;">${matrixFailure ? matrixFailure.description : 'Description not available'}</p>
+    <div style="border-left: 4px solid ${getColorForCode(ringInfo.failureCode)}; padding-left: 16px; margin-bottom: 20px;">
+      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Code: ${ringInfo.failureCode}</h4>
+      <p style="margin: 0; color: #666; font-size: 14px;">Traffic Light: ${mitigatingAction ? mitigatingAction.trafficLight.toUpperCase() : 'Unknown'}</p>
     </div>
+    
     <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0;">Required Action:</h4>
-      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.5;">
+      <h4 style="margin: 0 0 8px 0; color: #333;">Matrix Category:</h4>
+      <p style="margin: 0; color: #666;">${formatCategoryName(ringInfo.matrixCategory)}</p>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Description:</h4>
+      <p style="margin: 0; color: #666; line-height: 1.4;">${matrixFailure ? matrixFailure.description : 'Description not available'}</p>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 8px 0; color: #333;">Required Action:</h4>
+      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.4;">
         ${mitigatingAction ? mitigatingAction.description : 'Action not defined'}
       </div>
     </div>
+    
     <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0;">Specific Test Failure Reason:</h4>
-      <p style="margin: 0; font-style: italic;">${ringInfo.message.split(' - Code')[0]}</p>
+      <h4 style="margin: 0 0 8px 0; color: #333;">Test Failure Reason:</h4>
+      <p style="margin: 0; color: #666; font-style: italic;">${ringInfo.message.split(' - Code')[0]}</p>
     </div>
-
-    <!-- Escalation Management Section -->
-    <div style="border-top: 1px solid #eee; padding-top: 20px;">
-      <h4 style="margin: 0 0 12px 0; font-size: 1.2em;">🚨 Escalation Management</h4>
+    
+    <!-- Escalation Section -->
+    <div style="margin-bottom: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+      <h4 style="margin: 0 0 12px 0; color: #333;">🚨 Escalation Management</h4>
       
-      ${existingEscalation ? `
-        <div style="background: #e2f0d9; border-left: 4px solid #548235; padding: 12px; border-radius: 4px; margin-bottom: 12px; color: #333;">
-          <strong style="font-size: 1.1em;">✅ This failure has been escalated.</strong><br>
-          <ul style="margin: 8px 0 0 20px; padding: 0; font-size: 0.9em; list-style-position: inside;">
-            <li><strong>Status:</strong> <span style="text-transform: capitalize;">${existingEscalation.status}</span></li>
-            <li><strong>Escalated To:</strong> ${existingEscalation.escalatedTo}</li>
-            <li><strong>Timestamp:</strong> ${new Date(existingEscalation.createdAt).toLocaleString()}</li>
-          </ul>
-        </div>
-      ` : `
+      ${hasActiveEscalation ? `
         <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-          <strong>⚠️ Action Required:</strong> This failure has not been escalated yet.
+          <strong>⚠️ Active Escalation Exists</strong><br>
+          <small>This failure has already been escalated. Check escalation status below.</small>
         </div>
-      `}
+      ` : ''}
       
       <div style="display: flex; gap: 10px; margin-bottom: 12px;">
         <button id="escalateBtn" 
-                ${existingEscalation ? 'disabled' : ''} 
-                title="${existingEscalation ? 'This failure has already been escalated' : 'Escalate this failure to your superior'}"
-                style="background: ${existingEscalation ? '#999' : '#dc3545'}; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: ${existingEscalation ? 'not-allowed' : 'pointer'}; font-weight: bold; flex-grow: 1;">
-          ${existingEscalation ? 'Already Escalated' : 'Escalate to Superior'}
+                ${hasActiveEscalation ? 'disabled' : ''} 
+                style="background: ${hasActiveEscalation ? '#ccc' : '#dc3545'}; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: ${hasActiveEscalation ? 'not-allowed' : 'pointer'};">
+          ${hasActiveEscalation ? 'Already Escalated' : 'Escalate to Superior'}
         </button>
         
-        <button id="viewAllEscalationsBtn" title="View all active escalations" style="background: #6c757d; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer;">
-          View All Escalations
+        <button id="viewEscalationsBtn" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+          View All Escalations (${activeEscalations.length})
         </button>
       </div>
       
-      <textarea id="escalationComment" placeholder="Add an optional comment before escalating..." 
-                style="width: 100%; box-sizing: border-box; height: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: inherit;"
-                ${existingEscalation ? 'disabled' : ''}></textarea>
+      <textarea id="escalationComment" placeholder="Add escalation comment (optional)..." 
+                style="width: 100%; height: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: inherit;"></textarea>
     </div>
     
-    <!-- Close Button Footer -->
-    <div style="text-align: right; margin-top: 24px; border-top: 1px solid #eee; padding-top: 15px;">
-      <button id="closeModalBtn" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+    <div style="text-align: right; margin-top: 24px;">
+      <button id="closeModalBtn" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
         Close
       </button>
     </div>
   `;
-
-  // 6. Append modal to the document and set up event listeners
+  
   backdrop.appendChild(modal);
   document.body.appendChild(backdrop);
-
-  // Close handlers
-  const closeModal = () => backdrop.remove();
-  document.getElementById('closeModal').onclick = closeModal;
-  document.getElementById('closeModalBtn').onclick = closeModal;
-  backdrop.onclick = (e) => {
-    if (e.target === backdrop) closeModal();
-  };
-
-  // Escalate button handler (only attaches if the button is not disabled)
-  const escalateBtn = document.getElementById('escalateBtn');
-  if (escalateBtn && !existingEscalation) {
+  
+  // Add escalation handlers
+const escalateBtn = document.getElementById('escalateBtn');
+  if (escalateBtn && !hasActiveEscalation) {
     escalateBtn.onclick = () => {
+      // Get well name from the modal's data attribute
+      const modalWellName = backdrop.getAttribute('data-well-name');
+      if (!modalWellName) {
+        console.error('Cannot escalate: Missing well name');
+        showTemporaryMessage('Cannot escalate: Missing well information', 'error');
+        return;
+      }
+      
+      // Look up the well ID from the global wells array
+      let wellId = null;
+      const wellObject = window.wells.find(w => w.name === modalWellName);
+      if (wellObject && wellObject.id) {
+        wellId = wellObject.id;
+        console.log(`Found well ID ${wellId} for well name ${modalWellName}`);
+      } else {
+        console.warn(`Could not find well ID for ${modalWellName}, proceeding with name only`);
+      }
+      
       const comment = document.getElementById('escalationComment').value.trim();
       
       const failureDetails = {
         failureReason: ringInfo.message,
         failureCode: ringInfo.failureCode,
         matrixCategory: ringInfo.matrixCategory,
-        trafficLight: ringInfo.trafficLight,
+        trafficLight: ringInfo.trafficLight || getTrafficLightFromCode(ringInfo.failureCode),
         matrixDescription: mitigatingAction ? mitigatingAction.description : 'Action required',
-        wellType: getWellTypeKey(wellName),
-        timestamp: new Date().toISOString() // Use ISO string for consistency
+        wellType: getWellTypeKey(modalWellName),
+        timestamp: new Date()
       };
       
-      const escalation = window.escalationSystem.createEscalation(wellName, ringInfo.valveId, failureDetails, true);
+      console.log(`Creating escalation for well: ${modalWellName}, valve: ${ringInfo.valveId}`);
       
-      if (escalation && comment) {
-        window.escalationSystem.addCommentToEscalation(escalation.id, comment);
+      // Pass both well name and well ID to createEscalation
+      const escalation = window.escalationSystem.createEscalation(modalWellName, ringInfo.valveId, failureDetails, true, wellId);
+      if (comment) {
+        escalation.comments.push({
+          text: comment,
+          author: window.currentUser?.login || 'user',
+          timestamp: new Date()
+        });
       }
       
-      showTemporaryMessage(`Failure for ${wellName} escalated successfully!`, 'success');
-      
-      // Close and refresh the modal to show the updated status
+      showTemporaryMessage(`Escalation ${escalation.id} created and sent to ${escalation.escalatedTo}`, 'success');
       closeModal();
-      showDetailedFailureModal(ringInfo, wellName);
     };
   }
-
-  // View All Escalations handler
-  const viewAllBtn = document.getElementById('viewAllEscalationsBtn');
-  if(viewAllBtn && typeof window.escalationSystem.showManagementModal === 'function') {
-      viewAllBtn.onclick = () => window.escalationSystem.showManagementModal();
-  }
-
+  
+  // View escalations handler
+  document.getElementById('viewEscalationsBtn').onclick = () => {
+    showEscalationManagementModal(wellName);
+  };
+  
+  // Add close handlers
+  const closeModal = () => {
+    backdrop.remove();
+    hideTooltip();
+  };
+  
+  document.getElementById('closeModal').onclick = closeModal;
+  document.getElementById('closeModalBtn').onclick = closeModal;
+  backdrop.onclick = (e) => {
+    if (e.target === backdrop) closeModal();
+  };
+  
   // Close on Escape key
   const escapeHandler = (e) => {
     if (e.key === 'Escape') {
@@ -640,7 +669,69 @@ function getPriorityColor(priority) {
 }
 
 // Add this debugging function to help identify well ID issues
+function debugWellInfo(wellNameOrId) {
+  console.log('=== WELL INFO DEBUG ===');
+  console.log('Input:', wellNameOrId);
+  
+  // Search by ID
+  const wellByID = window.wells.find(w => w.id === wellNameOrId);
+  if (wellByID) {
+    console.log('Found by ID:', wellByID);
+  }
+  
+  // Search by name
+  const wellByName = window.wells.find(w => w.name === wellNameOrId);
+  if (wellByName) {
+    console.log('Found by name:', wellByName);
+  }
+  
+  // Show all wells for reference
+  console.log('All wells:', window.wells);
+  
+  return {
+    wellByID,
+    wellByName,
+    allWellIds: window.wells.map(w => w.id),
+    allWellNames: window.wells.map(w => w.name)
+  };
+}
 
+// Make it available globally
+window.debugWellInfo = debugWellInfo;
+function formatDate(date) {
+  return new Date(date).toLocaleDateString() + ' ' + new Date(date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+function testEscalation() {
+  // Find a real well from the system to test with
+  const testWell = window.wells && window.wells.length > 0 ? window.wells[0] : null;
+  
+  if (!testWell) {
+    console.error('No wells available for test escalation');
+    return null;
+  }
+  
+  console.log(`Creating test escalation for well: ${testWell.name} (ID: ${testWell.id})`);
+  
+  const testFailureDetails = {
+    failureReason: "Test valve failure",
+    failureCode: 9,
+    matrixCategory: 'singleSurfaceFailure',
+    trafficLight: 'red',
+    matrixDescription: 'Make well safe immediately',
+    wellType: 'Producer',
+    timestamp: new Date()
+  };
+  
+  // Use a real well name that can be mapped to an ID
+  const escalation = window.escalationSystem.createEscalation(testWell.name, 'TEST_VALVE', testFailureDetails, true);
+  console.log('Test escalation created:', escalation);
+  
+  // Update dashboard to show the escalation
+  window.escalationSystem.updateDashboardEscalationIndicators();
+  
+  return escalation;
+}
 // =================== DASHBOARD VISUAL INDICATORS ===================
 
 // Add escalation indicator to well circles

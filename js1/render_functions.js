@@ -488,7 +488,6 @@ function renderValveTestResultsPanel(currentWellId) {
   html += `</div>`;
 
   panel.innerHTML = html;
-  
 }
 function renderWellDetailsButton(wellId) {
   const wellDetailsContainer = document.getElementById('wellDetailsContainer');
@@ -566,118 +565,6 @@ function renderWellDetailsButton(wellId) {
         detailsBox.style.display = "block";
       };
   }
-}
-
-/**
- * Determines the failure category and number from valve test results
- * using the well failure matrix for accurate categorization.
- * 
- * @param {Object} testResult - The valve test result data
- * @returns {Object} An object with category and number properties
- */
-function getFailureCategoryAndNumber(testResult) {
-  if (!testResult) {
-    return { category: null, number: null };
-  }
-
-  // If the test passed, return null values
-  if (testResult.pass === true) {
-    return { category: null, number: null };
-  }
-
-  // Get the current well type from global context
-  const wellName = window.currentWellContext?.name;
-  const well = window.wells.find(w => w.name === wellName);
-  const wellType = well ? getWellTypeKey(well.type) : 'Producer'; // Fallback to Producer
-
-  // Get valve type
-  const valveType = testResult.valve_type || '';
-  const valveId = testResult.valve_id || '';
-  
-  // Extract failure information
-  const failureReasons = testResult.failure_reasons || [];
-  const isLeakRateExceeded = failureReasons.some(reason => 
-    reason.includes('leak rate') || reason.includes('exceed')
-  );
-  
-  // Determine if this is a surface or subsurface valve
-  const isSubsurfaceValve = valveType.toUpperCase() === 'SCSSV';
-  
-  // Check if multiple valves failed (need to determine from global context)
-  const multipleValvesFailed = checkForMultipleFailedValves(wellName);
-
-  // Initialize with null values
-  let category = null;
-  let number = null;
-
-  // Step 1: Determine the category
-  if (isSubsurfaceValve) {
-    category = multipleValvesFailed ? 'multipleSubSurfaceFailures' : 'singleSubSurfaceFailure';
-  } else {
-    category = multipleValvesFailed ? 'multipleSurfaceFailures' : 'singleSurfaceFailure';
-  }
-
-  // Step 2: Find the appropriate failure number by searching through the matrix
-  if (category && window.wellFailureMatrix[category]) {
-    // Get all entries in the selected category
-    const categoryEntries = window.wellFailureMatrix[category];
-    
-    // Find the most appropriate failure description based on valve type
-    for (const [failureNum, failureData] of Object.entries(categoryEntries)) {
-      const description = failureData.description.toLowerCase();
-      const valveTypeUpper = valveType.toUpperCase();
-      
-      // Match based on valve type
-      if (description.includes(valveTypeUpper)) {
-        number = parseInt(failureNum);
-        break;
-      }
-      
-      // For SCSSV and leak rate failures
-      if (isSubsurfaceValve && isLeakRateExceeded && 
-          description.includes('completion leak') && description.includes('above allowable leak rate')) {
-        number = parseInt(failureNum);
-        break;
-      }
-    }
-    
-    // If still not found, use first available number as fallback
-    if (number === null && Object.keys(categoryEntries).length > 0) {
-      number = parseInt(Object.keys(categoryEntries)[0]);
-    }
-  }
-
-  console.log(`Dynamically categorized failure for ${valveType} as ${category}:${number}`, failureReasons);
-  return { category, number };
-}
-
-/**
- * Helper function to check if multiple valves have failed for the well
- * @param {string} wellName - The name of the well to check
- * @returns {boolean} True if multiple valves have failed tests
- */
-function checkForMultipleFailedValves(wellName) {
-  if (!wellName || !window.valveTestResults || !window.valveTestResults[wellName]) {
-    return false;
-  }
-  
-  const wellResults = window.valveTestResults[wellName];
-  let failedValveCount = 0;
-  
-  for (const valveId in wellResults) {
-    if (wellResults.hasOwnProperty(valveId)) {
-      const tests = wellResults[valveId];
-      if (!Array.isArray(tests) || tests.length === 0) continue;
-      
-      // Check most recent test result
-      const latestTest = tests[tests.length - 1];
-      if (latestTest && latestTest.pass === false) {
-        failedValveCount++;
-      }
-    }
-  }
-  
-  return failedValveCount > 1;
 }
 
 window.renderWellsSection = renderWellsSection;

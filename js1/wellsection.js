@@ -104,11 +104,6 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
   panel.classList.add('active');
   window.currentValvePanel = currentValveId; // Store the unique ID
 
-  // ADD THIS CODE: Get the valve limits based on the valve type
-  const valveType = valveName.toUpperCase(); // Ensure uppercase for lookup
-  const valveLimits = VALVE_LIMITS[valveType] || { monitoring_time: 10, critical_rate: 15 }; // Default values as fallback
-  console.log(`Using limits for ${valveType}:`, valveLimits);
-
  
 
   let validBlockingValves = [];

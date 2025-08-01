@@ -403,81 +403,139 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA PROCESSING & STATUS LOGIC (Modified) ---
 // --- DATA PROCESSING & STATUS LOGIC (Matrix-Based) ---
 function getLiveStatusForAllRingsWithEscalation(well) {
-    const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
-    const rings = [];
-    const wellType = getWellTypeKey(well.type);
+  const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
+  let rings = [];
 
-    const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
-    if (wellValves.length === 0) {
-        return []; // No valves to process
+  const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
+  const orderedWellValves = [...wellValves].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+  if (orderedWellValves.length === 0) {
+    console.warn(`Well ${well.name || well.id} has no valves defined in its 'christmasTree.valves' property.`);
+    return [];
+  }
+
+  // Analyze all valve failures to determine matrix conditions
+  const failedValves = [];
+  const failedSurfaceValves = [];
+  const failedSubSurfaceValves = [];
+
+  for (const valveDef of orderedWellValves) {
+    const valveId = valveDef.id;
+    const valveLabel = valveDef.name || valveDef.id;
+
+    const valveTests = testResults[valveId];
+    let latestResult = null;
+
+    if (Array.isArray(valveTests) && valveTests.length > 0) {
+      latestResult = valveTests[valveTests.length - 1];
+    } else if (valveTests && typeof valveTests === 'object' && !Array.isArray(valveTests)) {
+      latestResult = valveTests;
     }
 
-    // Process each valve individually for failures and escalations
-    for (const valveDef of wellValves) {
-        const valveId = valveDef.id;
-        const valveLabel = valveDef.name || valveDef.id;
-        const valveTests = testResults[valveId];
+    // Check if valve failed
+    if (latestResult && typeof latestResult === 'object') {
+      const testPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
 
-        if (!Array.isArray(valveTests) || valveTests.length === 0) {
-            continue; // No test data for this valve
+      if (!testPassed) {
+        const failureInfo = {
+          valveId,
+          valveLabel,
+          result: latestResult,
+          failureReason: (latestResult.failure_reasons && Array.isArray(latestResult.failure_reasons) && latestResult.failure_reasons.length)
+            ? latestResult.failure_reasons.join(", ")
+            : "Test failed"
+        };
+
+        failedValves.push(failureInfo);
+
+        // Categorize valve type
+        const convertedValveName = window.wellFailureModel.convertValve(valveId);
+        if (convertedValveName === "SCSSV") {
+          failedSubSurfaceValves.push(failureInfo);
+        } else {
+          failedSurfaceValves.push(failureInfo);
         }
-
-        // Use the latest test result
-        const latestResult = valveTests[valveTests.length - 1];
-        if (!latestResult || typeof latestResult !== 'object') {
-            continue;
-        }
-
-        const isTestPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
-
-        // --- CORE LOGIC: If the test failed, process it ---
-        if (!isTestPassed) {
-            // 1. Determine the failure category and code using the matrix
-            const { category, number } = getFailureCategoryAndNumber(latestResult);
-            const failureCode = window.wellFailureModel.getFailureCode(category, number, wellType);
-            const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
-            
-            const failureDetails = {
-                failureReason: (latestResult.failure_reasons || ["Test Failed"]).join(", "),
-                failureCode: failureCode,
-                matrixCategory: category,
-                trafficLight: mitigatingAction ? mitigatingAction.trafficLight : 'red',
-                matrixDescription: mitigatingAction ? mitigatingAction.description : 'Action required',
-                wellType: wellType,
-                testResult: latestResult,
-                timestamp: new Date().toISOString()
-            };
-
-            // 2. AUTOMATIC ESCALATION: Check if an escalation already exists
-            const existingEscalation = window.escalationSystem.getEscalationForValve(well.name, valveId);
-
-            if (!existingEscalation) {
-                // 3. If no escalation exists, CREATE ONE AUTOMATICALLY
-                console.log(`%c[AUTO-ESCALATION] New failure detected for ${well.name} - ${valveLabel}. Creating escalation.`, "color: #ff8c00; font-weight: bold;");
-                
-                // The 'false' indicates this was a system-initiated (automatic) escalation
-                window.escalationSystem.createEscalation(well.name, valveId, failureDetails, false); 
-            }
-
-            // 4. Add a ring to the dashboard for this failed valve
-            rings.push({
-                label: valveLabel,
-                color: mitigatingAction ? mitigatingAction.color : 'red',
-                message: `${failureDetails.failureReason} - ${failureDetails.matrixDescription}`,
-                failureCode: failureCode,
-                matrixCategory: category,
-                failureNumber: number, // Pass this along for the modal
-                trafficLight: failureDetails.trafficLight,
-                valveId: valveId
-            });
-        }
+      }
     }
+  }
 
-    // Sort rings by severity (red, orange, yellow) for consistent display
-    const colorOrder = { 'red': 1, 'orange': 2, 'yellow': 3, 'green': 4 };
-    rings.sort((a, b) => (colorOrder[a.color] || 99) - (colorOrder[b.color] || 99));
+  // If no failed valves, return empty array
+  if (failedValves.length === 0) {
+    return [];
+  }
 
-    return rings;
+  // Determine matrix condition and get failure code
+  const wellType = getWellTypeKey(well.type);
+  let matrixCategory = '';
+  let failureCode = null;
+
+  // Apply matrix logic to determine failure category
+  if (failedSubSurfaceValves.length > 0 && failedSurfaceValves.length > 0) {
+    matrixCategory = 'subSurfacePlusSurfaceFailure';
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+  } else if (failedSubSurfaceValves.length > 1) {
+    matrixCategory = 'multipleSubSurfaceFailures';
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+  } else if (failedSubSurfaceValves.length === 1) {
+    matrixCategory = 'singleSubSurfaceFailure';
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+  } else if (failedSurfaceValves.length > 1) {
+    matrixCategory = 'multipleSurfaceFailures';
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+  } else if (failedSurfaceValves.length === 1) {
+    matrixCategory = 'singleSurfaceFailure';
+    failureCode = window.wellFailureModel.getFailureCode(matrixCategory, 1, wellType);
+  }
+
+  // Get mitigating action and color from failure code
+  const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
+  const ringColor = mitigatingAction ? mitigatingAction.color : 'red';
+  const matrixDescription = mitigatingAction ? mitigatingAction.description : 'Action required';
+  const trafficLight = mitigatingAction ? mitigatingAction.trafficLight : 'red';
+
+  // =================== ESCALATION INTEGRATION ===================
+  // Automatically escalate each failed valve if escalation system is available
+  if (window.escalationSystem && typeof window.autoEscalateFailedValve === 'function') {
+    failedValves.forEach(failureInfo => {
+      const failureDetails = {
+        failureReason: failureInfo.failureReason,
+        failureCode: failureCode,
+        matrixCategory: matrixCategory,
+        trafficLight: trafficLight,
+        matrixDescription: matrixDescription,
+        wellType: wellType,
+        testResult: failureInfo.result,
+        timestamp: new Date()
+      };
+
+      // Check if this is a new failure or updated failure that needs escalation
+      const shouldEscalate = checkIfShouldEscalate(well.name, failureInfo.valveId, failureDetails);
+      
+      if (shouldEscalate) {
+        try {
+          const escalation = window.autoEscalateFailedValve(well.name, failureInfo.valveId, failureDetails);
+          console.log(`Auto-escalated valve failure: ${well.name} - ${failureInfo.valveId} (Escalation ID: ${escalation.id})`);
+        } catch (error) {
+          console.error(`Failed to escalate valve failure for ${well.name} - ${failureInfo.valveId}:`, error);
+        }
+      }
+    });
+  }
+
+  // Create rings for each failed valve with matrix-determined color
+  failedValves.forEach(failureInfo => {
+    rings.push({
+      label: failureInfo.valveLabel,
+      color: ringColor,
+      message: `${failureInfo.failureReason} - ${matrixDescription}`,
+      failureCode: failureCode,
+      matrixCategory: matrixCategory,
+      trafficLight: trafficLight,
+      valveId: failureInfo.valveId 
+    });
+  });
+
+  return rings;
 }
 
 // Helper function to convert well type to matrix key
@@ -1373,6 +1431,39 @@ function fetchWellsAndSyncResultsWithFilter() {
     });
 }
 
+function testEscalation() {
+  // Create a test escalation to verify the system works
+  const testFailureDetails = {
+    failureReason: "Test valve failure",
+    failureCode: 9,
+    matrixCategory: 'singleSurfaceFailure',
+    trafficLight: 'red',
+    matrixDescription: 'Make well safe immediately',
+    wellType: 'Producer',
+    timestamp: new Date()
+  };
+  
+  const escalation = window.escalationSystem.createEscalation('TEST_WELL', 'TEST_VALVE', testFailureDetails, true);
+  console.log('Test escalation created:', escalation);
+  
+  // Update dashboard to show the escalation
+  window.escalationSystem.updateDashboardEscalationIndicators();
+  
+  return escalation;
+}
+
+// 8. Add debug logging to trace escalation flow
+function debugEscalationFlow() {
+  console.log('=== ESCALATION DEBUG INFO ===');
+  console.log('Current well context:', window.currentDashboardWell);
+  console.log('Current tooltip well:', window.currentTooltipWellName);
+  console.log('Active escalations:', window.escalationSystem.escalations);
+  console.log('Escalation system:', window.escalationSystem);
+}
+
+// Make functions available globally for debugging
+window.testEscalation = testEscalation;
+window.debugEscalationFlow = debugEscalationFlow;
 
 // Update window exports
 window.renderMultiRingDashboard = renderMultiRingDashboardWithFilter;
