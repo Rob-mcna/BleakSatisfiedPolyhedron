@@ -57,7 +57,7 @@ function showCreateValveModal() {
 
     try {
       // --- API Call ---
-      const response = await fetch("http://10.226.14.79:5000/api/valves/", {
+      const response = await fetch("http://10.226.113.12:5000/api/valves/", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(valveData)
@@ -136,7 +136,7 @@ async function showCreateBlockingValveRuleModal() {
 
   // --- Fetch initial data needed for the form ---
   try {
-    const wellsRes = await fetch("http://10.226.14.79:5000/api/wells/");
+    const wellsRes = await fetch("http://10.226.113.12:5000/api/wells/");
     if (!wellsRes.ok) {
         throw new Error('Failed to fetch wells data for modal.');
     }
@@ -257,7 +257,7 @@ async function showCreateBlockingValveRuleModal() {
     };
 
     try {
-      const response = await fetch("http://10.226.14.79:5000/api/cavity_volumes/", {
+      const response = await fetch("http://10.226.113.12:5000/api/cavity_volumes/", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -289,7 +289,7 @@ async function showCreateChristmasTreeModal() {
   // Fetch all available valves from the API to populate the checklist
   let allValves = [];
   try {
-    const response = await fetch("http://10.226.14.79:5000/api/valves/");
+    const response = await fetch("http://10.226.113.12:5000/api/valves/");
     if (response.ok) {
       allValves = await response.json();
     } else {
@@ -374,7 +374,7 @@ async function showCreateChristmasTreeModal() {
     }
 
     try {
-      const response = await fetch("http://10.226.14.79:5000/api/wellheads/", {
+      const response = await fetch("http://10.226.113.12:5000/api/wellheads/", {
         method: "POST",
    
         body: formData // Let the browser set the Content-Type for FormData
@@ -435,7 +435,7 @@ function showCreateWellModal() {
   document.body.appendChild(modal);
 
   // Fetch tree types for the dropdown
-  fetch("http://10.226.14.79:5000/api/wellheads/")
+  fetch("http://10.226.113.12:5000/api/wellheads/")
   .then(r => r.json())
   .then(treeTypes => {
     const dropdown = document.getElementById('treeTypeDropdown');
@@ -466,7 +466,7 @@ function showCreateWellModal() {
       metadata: form.metadata.value || "",
       status: "active"
     };
-    await fetch("http://10.226.14.79:5000/api/wells/", {
+    await fetch("http://10.226.113.12:5000/api/wells/", {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newWellData)

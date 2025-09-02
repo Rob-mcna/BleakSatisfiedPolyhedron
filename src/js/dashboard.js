@@ -270,7 +270,7 @@ async function fetchValveTestResults() {
                 ? well.christmasTree.valves : [];
             for (const valve of valves) {
                 const valveId = valve.id;
-                const url = `http://10.226.112.40:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
+                const url = `http://10.226.112.188:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
                 fetchPromises.push(
                     fetch(url)
                         .then(resp => {
@@ -357,7 +357,7 @@ async function fetchWellsAndInitialize() {
     try {
         showTemporaryMessage('Loading wells data...', 'info');
 
-        const response = await fetch('http://10.226.112.40:5000/api/wells');
+        const response = await fetch('http://10.226.112.188:5000/api/wells');
         if (!response.ok) {
             console.error("Failed to fetch wells data:", response.status, await response.text());
             showTemporaryMessage('Failed to load wells data', 'warning');
@@ -402,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- DATA PROCESSING & STATUS LOGIC ---
 // --- DATA PROCESSING & STATUS LOGIC (Modified) ---
 // --- DATA PROCESSING & STATUS LOGIC (Matrix-Based) ---
+// Enhanced getLiveStatusForAllRingsWithEscalation function
 function getLiveStatusForAllRingsWithEscalation(well) {
     const testResults = (window.valveTestResults && window.valveTestResults[well.name]) || {};
     const rings = [];
@@ -409,77 +410,75 @@ function getLiveStatusForAllRingsWithEscalation(well) {
 
     const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
     if (wellValves.length === 0) {
-        return []; // No valves to process
+        return [];
     }
 
-    // Process each valve individually for failures and escalations
-    for (const valveDef of wellValves) {
-        const valveId = valveDef.id;
-        const valveLabel = valveDef.name || valveDef.id;
-        const valveTests = testResults[valveId];
-
-        if (!Array.isArray(valveTests) || valveTests.length === 0) {
-            continue; // No test data for this valve
-        }
-
-        // Use the latest test result
-        const latestResult = valveTests[valveTests.length - 1];
-        if (!latestResult || typeof latestResult !== 'object') {
-            continue;
-        }
-
-        const isTestPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
-
-        // --- CORE LOGIC: If the test failed, process it ---
-        if (!isTestPassed) {
-            // 1. Determine the failure category and code using the matrix
-            const { category, number } = getFailureCategoryAndNumber(latestResult);
-            const failureCode = window.wellFailureModel.getFailureCode(category, number, wellType);
-            const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
-            
-            const failureDetails = {
-                failureReason: (latestResult.failure_reasons || ["Test Failed"]).join(", "),
-                failureCode: failureCode,
-                matrixCategory: category,
-                trafficLight: mitigatingAction ? mitigatingAction.trafficLight : 'red',
-                matrixDescription: mitigatingAction ? mitigatingAction.description : 'Action required',
-                wellType: wellType,
-                testResult: latestResult,
-                timestamp: new Date().toISOString()
-            };
-
-            // 2. AUTOMATIC ESCALATION: Check if an escalation already exists
-            const existingEscalation = window.escalationSystem.getEscalationForValve(well.name, valveId);
-
-            if (!existingEscalation) {
-                // 3. If no escalation exists, CREATE ONE AUTOMATICALLY
-                console.log(`%c[AUTO-ESCALATION] New failure detected for ${well.name} - ${valveLabel}. Creating escalation.`, "color: #ff8c00; font-weight: bold;");
-                
-                // The 'false' indicates this was a system-initiated (automatic) escalation
-                window.escalationSystem.createEscalation(well.name, valveId, failureDetails, false); 
-            }
-
-            // 4. Add a ring to the dashboard for this failed valve
-            rings.push({
-                label: valveLabel,
-                color: mitigatingAction ? mitigatingAction.color : 'red',
-                message: `${failureDetails.failureReason} - ${failureDetails.matrixDescription}`,
-                failureCode: failureCode,
-                matrixCategory: category,
-                failureNumber: number, // Pass this along for the modal
-                trafficLight: failureDetails.trafficLight,
-                valveId: valveId
-            });
-        }
+    // NEW: Analyze all failures first to determine if we have multiple failures
+    const failedValves = analyzeMultipleFailures(well, testResults);
+    
+    if (failedValves.length === 0) {
+        return []; // No failures found
     }
-
-    // Sort rings by severity (red, orange, yellow) for consistent display
-    const colorOrder = { 'red': 1, 'orange': 2, 'yellow': 3, 'green': 4 };
-    rings.sort((a, b) => (colorOrder[a.color] || 99) - (colorOrder[b.color] || 99));
+    
+    // NEW: Determine the appropriate matrix category based on failure analysis
+    const matrixInfo = determineMatrixCategoryForMultipleFailures(failedValves);
+    
+    if (!matrixInfo) {
+        return []; // Couldn't determine matrix category
+    }
+    
+    // Get the failure code from the matrix
+    const failureCode = window.wellFailureModel.getFailureCode(matrixInfo.category, matrixInfo.number, wellType);
+    const mitigatingAction = window.wellFailureModel.getMitigatingAction(failureCode);
+    
+    if (failureCode === null || failureCode === undefined) {
+        console.warn(`No failure code found for ${well.name} - Category: ${matrixInfo.category}, Number: ${matrixInfo.number}, Well Type: ${wellType}`);
+        return [];
+    }
+    
+    // Create failure details object
+    const failureDetails = {
+        failureReason: failedValves.map(v => `${v.valveLabel}: ${v.failureReasons.join(", ")}`).join("; "),
+        failureCode: failureCode,
+        matrixCategory: matrixInfo.category,
+        matrixNumber: matrixInfo.number,
+        trafficLight: mitigatingAction ? mitigatingAction.trafficLight : 'red',
+        matrixDescription: mitigatingAction ? mitigatingAction.description : 'Action required',
+        wellType: wellType,
+        failedValves: failedValves,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Check for existing escalation
+    const existingEscalation = window.escalationSystem && window.escalationSystem.getEscalationForWell ? 
+        window.escalationSystem.getEscalationForWell(well.name) : null;
+    
+    if (!existingEscalation && window.escalationSystem && window.escalationSystem.createEscalation) {
+        console.log(`%c[AUTO-ESCALATION] Multiple failure detected for ${well.name}. Creating escalation.`, "color: #ff8c00; font-weight: bold;");
+        
+        // For multiple failures, create escalation at well level rather than valve level
+        window.escalationSystem.createEscalation(well.name, 'MULTIPLE', failureDetails, false);
+    }
+    
+    // Create a single ring representing the overall failure status
+    const combinedLabel = failedValves.length === 1 ? 
+        failedValves[0].valveLabel : 
+        `${failedValves.length} Valves Failed`;
+        
+    rings.push({
+        label: combinedLabel,
+        color: mitigatingAction ? mitigatingAction.color : 'red',
+        message: `${failureDetails.failureReason} - ${failureDetails.matrixDescription}`,
+        failureCode: failureCode,
+        matrixCategory: matrixInfo.category,
+        failureNumber: matrixInfo.number,
+        trafficLight: failureDetails.trafficLight,
+        valveId: failedValves.length === 1 ? failedValves[0].valveId : 'MULTIPLE',
+        failedValves: failedValves // Include all failed valves for detailed modal
+    });
 
     return rings;
 }
-
 // Helper function to convert well type to matrix key
 // Helper function to convert well type to matrix key
 function getWellTypeKey(wellType) {
@@ -500,13 +499,22 @@ function colorMap(color) {
 
 function deduplicateWellsById(wellsArray) {
   if (!Array.isArray(wellsArray)) return [];
-  const seen = new Set();
-  return wellsArray.filter(well => {
-    if (!well || typeof well.name === 'undefined') return false;
-    if (seen.has(well.name)) return false;
-    seen.add(well.name);
-    return true;
+  
+  const uniqueWells = {};
+  const result = [];
+  
+  wellsArray.forEach(well => {
+    if (!well || typeof well.name === 'undefined') return;
+    
+    // Only add if this well name hasn't been seen before
+    if (!uniqueWells[well.name]) {
+      uniqueWells[well.name] = true;
+      result.push(well);
+    }
   });
+  
+  console.log(`Deduplicated wells: ${wellsArray.length} → ${result.length}`);
+  return result;
 }
 
 function countActiveDeviationsFromRecords() {
@@ -544,60 +552,77 @@ function updateDashboardKPIs(wellsForKPIs) {
   }
 }
 
-async function fetchWellsAndSyncResults() {
+function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
-  try {
-    const wellsResponse = await fetch('http://10.226.112.40:5000/api/wells/');
-    if (!wellsResponse.ok) {
-      throw new Error(`HTTP error! status: ${wellsResponse.status}`);
-    }
-    const wellsData = await wellsResponse.json();
-    const processedWellsData = wellsData || [];
-    
+  
+  fetch('http://10.226.112.188:5000/api/wells/')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(wellsData => {
+      const processedWellsData = Array.isArray(wellsData) ? wellsData : [];
+      
+      // Apply deduplication first - critical step!
+      wells = deduplicateWellsById(processedWellsData);
+      window.wells = wells;
+      
+      console.log(`Dashboard: Fetched and deduplicated wells - ${wells.length} unique wells found`);
+      
+      return fetch('http://10.226.112.188:5000/api/valves/')
+        .then(valvesResponse => {
+          if (!valvesResponse.ok) {
+            console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
+            window.allValves = [];
+            return [];
+          } else {
+            return valvesResponse.json().then(valvesData => {
+              window.allValves = valvesData;
+              console.log("Dashboard: Valve list fetched successfully.", window.allValves);
+              return valvesData;
+            });
+          }
+        })
+        .then(() => {
+          // Clear and initialize valve results containers for unique wells
+          window.valveTestResults = {};
+          window.selectedValveTestIndex = {};
+          
+          window.wells.forEach(well => {
+            window.valveTestResults[well.name] = {};
+            window.selectedValveTestIndex[well.name] = {};
+          });
 
-    const valvesResponse = await fetch('http://10.226.112.40:5000/api/valves/');
-    if (!valvesResponse.ok) {
-       console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
-       window.allValves = [];
-    } else {
-      window.allValves = await valvesResponse.json();
-      console.log("Dashboard: Valve list fetched successfully.", window.allValves);
-    }
-
-    wells = deduplicateWellsById(processedWellsData);
-
-    window.wells = wells;
-
-    window.valveTestResults = {};
-    window.wells.forEach(well => {
-      window.valveTestResults[well.name] = {};
+          return fetchValveTestResults();
+        })
+        .then(() => {
+          console.log("Dashboard: Well data and valve test results fetched successfully.");
+          renderMultiRingDashboardWithFilter();
+          
+          if (typeof renderWellsSection === "function" && document.getElementById('wellList')) {
+            renderWellsSection();
+          }
+        })
+        .catch(testError => {
+          console.warn("Dashboard: Failed to fetch valve test results:", testError);
+          renderMultiRingDashboardWithFilter();
+        });
+    })
+    .catch(error => {
+      console.error("Dashboard: Failed to fetch and sync data:", error);
+      const container = document.getElementById('wellMultiRingBoard');
+      if (container) {
+        container.innerHTML = `<p style="color:#888; text-align:center; padding:20px;">Error loading application data.</p>`;
+      }
     });
-
-    try {
-      await fetchValveTestResults();
-      console.log("Dashboard: Well data and valve test results fetched successfully.");
-    } catch (testError) {
-      console.warn("Dashboard: Failed to fetch valve test results:", testError);
-    }
-
-    renderMultiRingDashboard();
-    if (typeof renderWellsSection === "function" && document.getElementById('wellList')) {
-      renderWellsSection();
-    }
-
-  } catch (error) {
-    console.error("Dashboard: Failed to fetch and sync data:", error);
-    const container = document.getElementById('wellMultiRingBoard');
-    if (container) {
-      container.innerHTML = `<p style="color:#888; text-align:center; padding:20px;">Error loading application data.</p>`;
-    }
-  }
 }
 
 function runIntegrityTestAndRefreshDashboard(testData) {
   console.log('Dashboard: Submitting integrity test...');
 
-  fetch('http://10.226.112.40:5000/api/run_integrity_test', {
+  fetch('http://10.226.112.188:5000/api/run_integrity_test', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(testData)
@@ -618,6 +643,183 @@ function runIntegrityTestAndRefreshDashboard(testData) {
   });
 }
 
+function initializeDashboard() {
+  console.log('Dashboard: Initializing...');
+  
+  // Clear any existing state to prevent duplication issues
+  window.wells = [];
+  window.valveTestResults = {};
+  window.selectedValveTestIndex = {};
+  window.valvesWithNoData = {};
+  
+  // Check if we need to create the container
+  if (!document.getElementById('wellMultiRingBoard')) {
+    const dashboardContainer = document.createElement('div');
+    dashboardContainer.id = 'wellMultiRingBoard';
+    dashboardContainer.className = 'well-grid';
+    dashboardContainer.style.cssText = `
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 10px;
+      padding: 10px;
+    `;
+    
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.appendChild(dashboardContainer);
+  }
+  
+  // Initialize the dashboard with proper filtering
+  fetchWellsAndSyncResultsWithFilter();
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Use timeout to ensure everything else is loaded first
+  setTimeout(() => {
+    initializeDashboard();
+  }, 100);
+});
+
+
+function getFailureCategoryAndNumber(testResult) {
+  // Default to single surface failure if we can't determine specifics
+  return {
+    category: 'singleSurfaceFailure',
+    number: 1 // SCSSV failure as default
+  };
+}
+
+function analyzeMultipleFailures(well, testResults) {
+  const failedValves = [];
+  const wellType = getWellTypeKey(well.type);
+  
+  // Collect all failed valves with their details
+  const wellValves = (well.christmasTree && well.christmasTree.valves) || [];
+  
+  for (const valveDef of wellValves) {
+    const valveId = valveDef.id;
+    const valveLabel = valveDef.name || valveDef.id;
+    const valveTests = testResults[valveId];
+
+    if (!Array.isArray(valveTests) || valveTests.length === 0) {
+      continue;
+    }
+
+    const latestResult = valveTests[valveTests.length - 1];
+    if (!latestResult || typeof latestResult !== 'object') {
+      continue;
+    }
+
+    const isTestPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
+    
+    if (!isTestPassed) {
+      failedValves.push({
+        valveId,
+        valveLabel,
+        valveType: getValveType(valveId), // Helper function to determine valve type
+        testResult: latestResult,
+        failureReasons: latestResult.failure_reasons || ["Test Failed"]
+      });
+    }
+  }
+
+  return failedValves;
+}
+
+// Helper function to determine valve type from valve ID/name
+function getValveType(valveId) {
+  const valveId_upper = valveId.toUpperCase();
+  
+  if (valveId_upper.includes('SCSSV')) return 'SCSSV';
+  if (valveId_upper.includes('HMV')) return 'HMV';
+  if (valveId_upper.includes('HWV')) return 'HWV';
+  if (valveId_upper.includes('MWV')) return 'MWV';
+  if (valveId_upper.includes('MMV')) return 'MMV';
+  if (valveId_upper.includes('SV')) return 'SV';
+  if (valveId_upper.includes('KWV')) return 'KWV';
+  if (valveId_upper.includes('MIV')) return 'MIV';
+  if (valveId_upper.includes('CIV')) return 'CIV';
+  if (valveId_upper.includes('AXOV') || valveId_upper.includes('XOV')) return 'AXOV';
+  
+  // Default classification
+  return 'OTHER';
+}
+
+// Enhanced function to determine matrix category and failure number based on multiple failures
+function determineMatrixCategoryForMultipleFailures(failedValves) {
+  if (failedValves.length === 0) {
+    return null;
+  }
+  
+  if (failedValves.length === 1) {
+    // Single failure - map to appropriate single surface failure
+    const valveType = failedValves[0].valveType;
+    return mapSingleValveFailureToMatrix(valveType);
+  }
+  
+  // Multiple failures - analyze combinations
+  const valveTypes = failedValves.map(v => v.valveType);
+  const uniqueTypes = [...new Set(valveTypes)];
+  
+  // Check for specific multiple failure combinations from the matrix
+  if (uniqueTypes.includes('SCSSV') && (uniqueTypes.includes('HMV') || uniqueTypes.includes('HWV') || uniqueTypes.includes('MWV'))) {
+    return { category: 'multipleSurfaceFailures', number: 1 }; // SCSSV & actuated tree valve
+  }
+  
+  if (uniqueTypes.includes('SCSSV') && (uniqueTypes.includes('MMV') || uniqueTypes.includes('SV'))) {
+    return { category: 'multipleSurfaceFailures', number: 2 }; // SCSSV & MMV or SV
+  }
+  
+  if (uniqueTypes.includes('HWV') && uniqueTypes.includes('HMV')) {
+    return { category: 'multipleSurfaceFailures', number: 3 }; // HWV/MWV & HMV
+  }
+  
+  if (uniqueTypes.includes('HMV') && (uniqueTypes.includes('KWV') || uniqueTypes.includes('SV'))) {
+    return { category: 'multipleSurfaceFailures', number: 4 }; // HMV & KWV or SV
+  }
+  
+  if (uniqueTypes.includes('HMV') && uniqueTypes.includes('MMV')) {
+    return { category: 'multipleSurfaceFailures', number: 5 }; // HMV & MMV
+  }
+  
+  if ((uniqueTypes.includes('HWV') || uniqueTypes.includes('MWV')) && (uniqueTypes.includes('KWV') || uniqueTypes.includes('SV'))) {
+    return { category: 'multipleSurfaceFailures', number: 6 }; // HWV/MWV & KWV or SV
+  }
+  
+  if ((uniqueTypes.includes('HWV') || uniqueTypes.includes('MWV')) && uniqueTypes.includes('MMV')) {
+    return { category: 'multipleSurfaceFailures', number: 7 }; // HWV/MWV & MMV
+  }
+  
+  if (uniqueTypes.includes('MMV') && (uniqueTypes.includes('SV') || uniqueTypes.includes('KWV'))) {
+    return { category: 'multipleSurfaceFailures', number: 8 }; // MMV & SV or KWV
+  }
+  
+  if (uniqueTypes.includes('SCSSV') && 
+      valveTypes.filter(type => ['MMV', 'SV', 'KWV'].includes(type)).length >= 2) {
+    return { category: 'multipleSurfaceFailures', number: 9 }; // SCSSV & 2 manual valves
+  }
+  
+  // Default to multiple surface failures if we have multiple valves but no specific combination match
+  return { category: 'multipleSurfaceFailures', number: 1 };
+}
+
+// Helper function to map single valve failures to matrix categories
+function mapSingleValveFailureToMatrix(valveType) {
+  const mapping = {
+    'SCSSV': { category: 'singleSurfaceFailure', number: 1 },
+    'HMV': { category: 'singleSurfaceFailure', number: 2 },
+    'HWV': { category: 'singleSurfaceFailure', number: 3 },
+    'MWV': { category: 'singleSurfaceFailure', number: 3 },
+    'MMV': { category: 'singleSurfaceFailure', number: 4 },
+    'SV': { category: 'singleSurfaceFailure', number: 5 },
+    'MIV': { category: 'singleSurfaceFailure', number: 6 },
+    'CIV': { category: 'singleSurfaceFailure', number: 6 },
+    'AXOV': { category: 'singleSurfaceFailure', number: 7 },
+    'OTHER': { category: 'singleSurfaceFailure', number: 1 } // Default to SCSSV
+  };
+  
+  return mapping[valveType] || mapping['OTHER'];
+}
 
 // Modified showTooltip function to make tooltips clickable// Modified showTooltip function to properly detect all rings and extend hover time
 function showTooltip(e, well, div, ringData) {
@@ -805,118 +1007,6 @@ function handleWellHover(e, well, div, ringData) {
 }
 
 
-// Update the mouse event handlers in your renderMultiRingDashboard function
-// Replace the existing onmousemove assignment with:
-// div.onmousemove = (e) => handleWellHover(e, well, div, ringData.slice(0, validRadii.length));
-// New function to show detailed failure information in a modal
-/*function showDetailedFailureModal(ringInfo, wellName = null) {
-  // If wellName not provided, try to get from global context
-  if (!wellName) {
-    wellName = window.currentDashboardWell?.name || window.currentTooltipWellName || 'Unknown Well';
-  } // Remove existing modal if present
-  const existingModal = document.getElementById('failureDetailModal');
-  if (existingModal) {
-    existingModal.remove();
-  }
-  
-  // Create modal backdrop
-  const backdrop = document.createElement('div');
-  backdrop.id = 'failureDetailModal';
-  backdrop.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `;
-  
-  // Get failure details from matrix
-  const mitigatingAction = window.wellFailureModel.getMitigatingAction(ringInfo.failureCode);
-  const matrixFailure = getMatrixFailureDetails(ringInfo.matrixCategory, ringInfo.failureNumber);
-  
-  // Create modal content
-  const modal = document.createElement('div');
-  modal.style.cssText = `
-    background: white;
-    border-radius: 8px;
-    padding: 24px;
-    max-width: 600px;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: relative;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  `;
-  
-  modal.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-      <h3 style="margin: 0; color: #333;">Failure Details - ${ringInfo.label}</h3>
-      <button id="closeModal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-    </div>
-    
-    <div style="border-left: 4px solid ${getColorForCode(ringInfo.failureCode)}; padding-left: 16px; margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Code: ${ringInfo.failureCode}</h4>
-      <p style="margin: 0; color: #666; font-size: 14px;">Traffic Light: ${mitigatingAction ? mitigatingAction.trafficLight.toUpperCase() : 'Unknown'}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Matrix Category:</h4>
-      <p style="margin: 0; color: #666;">${formatCategoryName(ringInfo.matrixCategory)}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Failure Description:</h4>
-      <p style="margin: 0; color: #666; line-height: 1.4;">${matrixFailure ? matrixFailure.description : 'Description not available'}</p>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Required Action:</h4>
-      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.4;">
-        ${mitigatingAction ? mitigatingAction.description : 'Action not defined'}
-      </div>
-    </div>
-    
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0; color: #333;">Test Failure Reason:</h4>
-      <p style="margin: 0; color: #666; font-style: italic;">${ringInfo.message.split(' - Code')[0]}</p>
-    </div>
-    
-    <div style="text-align: right; margin-top: 24px;">
-      <button id="closeModalBtn" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-        Close
-      </button>
-    </div>
-  `;
-  
-  backdrop.appendChild(modal);
-  document.body.appendChild(backdrop);
-  
-  // Add close handlers
-  const closeModal = () => {
-    backdrop.remove();
-    hideTooltip(); // Also hide the tooltip
-  };
-  
-  document.getElementById('closeModal').onclick = closeModal;
-  document.getElementById('closeModalBtn').onclick = closeModal;
-  backdrop.onclick = (e) => {
-    if (e.target === backdrop) closeModal();
-  };
-  
-  // Close on Escape key
-  const escapeHandler = (e) => {
-    if (e.key === 'Escape') {
-      closeModal();
-      document.removeEventListener('keydown', escapeHandler);
-    }
-  };
-  document.addEventListener('keydown', escapeHandler);
-} */
-
 // Helper function to get matrix failure details
 function getMatrixFailureDetails(category, failureNumber) {
   if (window.wellFailureMatrix && window.wellFailureMatrix[category] && window.wellFailureMatrix[category][failureNumber]) {
@@ -993,6 +1083,7 @@ function categorizeWellByTestResults(well) {
 
 // Modified function to filter wells based on selected option
 function getWellsByFilterOption(filterOption) {
+  // First ensure we have deduplicated wells
   const allWells = deduplicateWellsById(wells);
   
   switch (filterOption) {
@@ -1009,11 +1100,13 @@ function getWellsByFilterOption(filterOption) {
       });
       
     case 'all':
-      return allWells; // <-- changed here
+      return allWells;
+      
     default:
       return allWells.filter(well => categorizeWellByTestResults(well) === 'with-failures');
   }
 }
+
 
 // Function to create and insert the filter dropdown
 function createDashboardFilterDropdown() {
@@ -1153,7 +1246,10 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     return;
   }
 
+  // Get wells based on filter and ensure they're properly deduplicated
   const filteredWells = getWellsByFilterOption(filterOption);
+  
+  // Empty the container first to prevent duplication
   container.innerHTML = '';
   
   if (filteredWells.length === 0) {
@@ -1172,8 +1268,15 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     return;
   }
 
+  // Track rendered wells to prevent duplicates within this function
+  const renderedWells = new Set();
+
   filteredWells.forEach(well => {
+    // Skip invalid wells or already rendered ones
     if (!well || typeof well.name === 'undefined') return;
+    if (renderedWells.has(well.name)) return;
+    
+    renderedWells.add(well.name);
 
     const ringData = getLiveStatusForAllRingsWithEscalation(well);
     
@@ -1220,7 +1323,7 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     }).join('');
 
     const centerCircleRadius = Math.max(minRadius, (validRadii.length > 0 ? validRadii[validRadii.length - 1] - strokeWidth / 2 : minRadius));
-    const centerFill = '#dd0808ff'; // Always use your blue
+    const centerFill = '#ec5642ff'; // Always use your blue
     const svg = `<svg width="90" height="90" style="display:block">
       ${ringsHtml}
       <circle cx="45" cy="45" r="${centerCircleRadius}" fill="${centerFill}" />
@@ -1228,10 +1331,11 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
         
     const div = document.createElement('div');
     div.className = "well-multiring";
+    div.dataset.wellName = well.name; // Add well name as data attribute for debugging
     div.innerHTML = svg + `<div class="well-label">${well.name}</div>`;
 
     div.onmousemove = (e) => {
-  // Store well context globally for tooltip system
+      // Store well context globally for tooltip system
       window.currentDashboardWell = well;
       handleWellHover(e, well, div, displayRings.slice(0, validRadii.length));
     };
@@ -1251,10 +1355,17 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
     };
     
     container.appendChild(div);
-    addEscalationIndicatorToWell(div, well.name);
+    
+    // Add indicators if those functions exist
+    if (typeof addEscalationIndicatorToWell === "function") {
+      addEscalationIndicatorToWell(div, well.name);
+    }
+    if (typeof addDeviationIndicatorToWell === "function") {
+      addDeviationIndicatorToWell(div, well.name);
+    }
   });
 
-  console.log(`Dashboard: Displaying ${filteredWells.length} wells with filter: ${filterOption}`);
+  console.log(`Dashboard: Rendered ${renderedWells.size} unique wells with filter: ${filterOption}`);
 }
 
 // Function to update KPIs based on filtered wells
@@ -1296,12 +1407,54 @@ function updateFilteredKPIs(filterOption) {
     document.getElementById('kpiDeviations').textContent = countActiveDeviationsFromRecords();
   }
 }
+// Add this function to create a legend for the dashboard
+function addDashboardIndicatorLegend() {
+  // Check if legend already exists
+  if (document.getElementById('dashboardIndicatorLegend')) return;
+  
+  // Find the dashboard container
+  const dashboardContainer = document.getElementById('wellMultiRingBoard');
+  if (!dashboardContainer) return;
+  
+  // Create legend container
+  const legend = document.createElement('div');
+  legend.id = 'dashboardIndicatorLegend';
+  legend.style.cssText = `
+    margin: 10px 0 15px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  `;
+  
+  // Legend content
+  legend.innerHTML = `
+    <div style="font-weight: bold; margin-right: 5px;">Indicator Legend:</div>
+    
+    
+  `;
+  
+  // Add legend to dashboard
+  const filterContainer = document.getElementById('dashboardFilterContainer');
+  if (filterContainer) {
+    filterContainer.insertAdjacentElement('afterend', legend);
+  } else {
+    dashboardContainer.insertAdjacentElement('beforebegin', legend);
+  }
+}
 
 // Modified main render function to use the new filtering system
 function renderMultiRingDashboardWithFilter() {
   // Create dropdown if it doesn't exist
   createDashboardFilterDropdown();
   addEscalationManagementButton();
+  addDashboardIndicatorLegend(); // Add this line to show the legend
   
   // Get current filter value or default to 'with-failures'
   const filterSelect = document.getElementById('dashboardFilter');
@@ -1318,7 +1471,7 @@ function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
   // Keep all the existing fetch logic from fetchWellsAndSyncResults
-  fetch('http://10.226.112.40:5000/api/wells/')
+  fetch('http://10.226.112.188:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1328,7 +1481,7 @@ function fetchWellsAndSyncResultsWithFilter() {
     .then(wellsData => {
       const processedWellsData = wellsData || [];
       
-      return fetch('http://10.226.112.40:5000/api/valves/')
+      return fetch('http://10.226.112.188:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
@@ -1387,3 +1540,7 @@ window.onload = function() {
 window.runIntegrityTestAndRefreshDashboard = runIntegrityTestAndRefreshDashboard;
 window.fetchValveTestResults = fetchValveTestResults;
 window.getLiveStatusForAllRingsWithEscalation = getLiveStatusForAllRingsWithEscalation;
+// 6. Update the window objects to use these new functions
+window.deduplicateWellsById = deduplicateWellsById;
+
+window.initializeDashboard = initializeDashboard;

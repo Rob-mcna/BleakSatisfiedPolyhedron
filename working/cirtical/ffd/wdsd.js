@@ -42,76 +42,78 @@ class EscalationSystem {
   // 2. Fix the createEscalation method to store both name and ID
   // =================== MODIFIED ESCALATION SYSTEM ===================
 
-  // Update the createEscalation method to track the origin rather than destination
-  async createEscalation(wellName, valveId, failureDetails, userInitiated = false, wellId = null) {
-    // Validate required inputs
-    if (!wellName) {
-      console.error('Error: Cannot create escalation without a well name');
-      showTemporaryMessage('Failed to create escalation: Missing well name', 'error');
-      return null;
-    }
-    
-    // If wellId wasn't provided, try to get it from the wells list
-    if (!wellId) {
-      const wellObject = window.wells.find(w => w.name === wellName);
-      if (wellObject && wellObject.id) {
-        wellId = wellObject.id;
-        console.log(`Found well ID ${wellId} for well name ${wellName}`);
-      }
-    }
-    
-    // Get the current user
-    const userEmail = window.AuthService.currentUserData?.email || 'system';
-    const userRole = window.AuthService.currentUserData?.role || '';
-    
-    const escalation = {
-      id: `ESC-${Date.now()}-${window.escalationIdCounter++}`,
-      wellName,
-      wellId, // Store the well ID for database operations
-      valveId,
-      failureDetails,
-      status: 'open',
-      priority: this.getPriorityFromTrafficLight(failureDetails.trafficLight),
-      createdAt: new Date(),
-      createdBy: userEmail,
-      creatorRole: userRole, // Store the role of the creator
-      userInitiated,
-      escalatedTo: this.determineSuperior(userRole), // Still need this for workflow logic
-      comments: [],
-      acknowledgedAt: null,
-      resolvedAt: null
-    };
-    
-    // Add to local array
-    this.escalations.push(escalation);
-    
-    console.log(`Created escalation ${escalation.id} for well ${wellName} (ID: ${wellId}), valve ${valveId} by ${userEmail} (${userRole})`, escalation);
-    
-    // Update dashboard indicators
-    this.updateDashboardEscalationIndicators();
-    
-    // Send to database
-    await this.sendEscalationToDatabase(escalation);
-    
-    return escalation;
+// Update the createEscalation method to track the origin rather than destination
+async createEscalation(wellName, valveId, failureDetails, userInitiated = false, wellId = null) {
+  // Validate required inputs
+  if (!wellName) {
+    console.error('Error: Cannot create escalation without a well name');
+    showTemporaryMessage('Failed to create escalation: Missing well name', 'error');
+    return null;
   }
+  
+  // If wellId wasn't provided, try to get it from the wells list
+  if (!wellId) {
+    const wellObject = window.wells.find(w => w.name === wellName);
+    if (wellObject && wellObject.id) {
+      wellId = wellObject.id;
+      console.log(`Found well ID ${wellId} for well name ${wellName}`);
+    }
+  }
+  
+  // Get the current user
+  const userEmail = window.AuthService.currentUserData?.email || 'system';
+  const userRole = window.AuthService.currentUserData?.role || '';
+  
+  const escalation = {
+    id: `ESC-${Date.now()}-${window.escalationIdCounter++}`,
+    wellName,
+    wellId, // Store the well ID for database operations
+    valveId,
+    failureDetails,
+    status: 'open',
+    priority: this.getPriorityFromTrafficLight(failureDetails.trafficLight),
+    createdAt: new Date(),
+    createdBy: userEmail,
+    creatorRole: userRole, // Store the role of the creator
+    userInitiated,
+    escalatedTo: this.determineSuperior(userRole), // Still need this for workflow logic
+    comments: [],
+    acknowledgedAt: null,
+    resolvedAt: null
+  };
+  
+  // Add to local array
+  this.escalations.push(escalation);
+  
+  console.log(`Created escalation ${escalation.id} for well ${wellName} (ID: ${wellId}), valve ${valveId} by ${userEmail} (${userRole})`, escalation);
+  
+  // Update dashboard indicators
+  this.updateDashboardEscalationIndicators();
+  
+  // Send to database
+  await this.sendEscalationToDatabase(escalation);
+  
+  return escalation;
+}
 
   // 3. Fix sendEscalationToDatabase to use the well ID instead of name
   async sendEscalationToDatabase(escalation) {
     try {
       // Prepare the data in the exact format your API expects
       const backendData = {
+      
         failureCode: escalation.failureDetails.failureCode,
         matrixCategory: escalation.failureDetails.matrixCategory,
         failureDescription: escalation.failureDetails.failureReason,
         requiredAction: escalation.failureDetails.matrixDescription,
         createdBy: escalation.createdBy,
         createdAt: new Date().toISOString(),
+   
       };
 
       console.log('Attempting to save escalation:', backendData);
 
-      const response = await fetch(`http://10.226.112.188:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
+      const response = await fetch(`http://10.226.112.153:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +180,7 @@ class EscalationSystem {
       console.log(`Updating escalation in database for well ID: ${escalation.wellId}`);
       
       // FIX: Changed method to 'POST' and parameter to 'well' to match the working create endpoint.
-      const response = await fetch(`http://10.226.112.188:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
+      const response = await fetch(`http://10.226.112.153:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json'
@@ -381,6 +383,7 @@ function _buildEscalationManagementSection(existingEscalation) {
   let actionsHtml = '';
   let statusHtml = '';
   
+  // Get the current user from the Auth Service
   const currentUser = window.AuthService.currentUserData;
   console.log("Building escalation section. Current user:", currentUser);
   
@@ -388,45 +391,112 @@ function _buildEscalationManagementSection(existingEscalation) {
     console.warn("No user data available when building escalation UI");
   }
   
+  // Check if the user is admin (admins don't escalate, they only approve/deny deviations)
   const isAdmin = currentUser?.role === 'admin';
   const isSupervisor = currentUser?.role === 'supervisor' || currentUser?.role === 'manager';
+  
+  // Check if the user can take action on this escalation
+  const isEscalatedToCurrentUser = existingEscalation && existingEscalation.escalatedTo === currentUser?.role;
+  console.log(`Escalation to: ${existingEscalation?.escalatedTo}, Current role: ${currentUser?.role}, Match: ${isEscalatedToCurrentUser}`);
+
+  // Check if user can create deviations (supervisor or manager, but not admin)
+  const canCreateDeviation = window.deviationSystem && window.deviationSystem.canCreateDeviations();
 
   if (existingEscalation) {
+    // Prepare the origin text (who created the escalation)
     const originText = existingEscalation.creatorRole 
       ? `Created by: ${existingEscalation.creatorRole}` 
       : `Created by: ${existingEscalation.createdBy}`;
+    
+    // Custom status message for re-test requests
+        // Custom status message for re-test requests
+    if (existingEscalation.status === 'retest-requested') {
+        // Find the most recent comment, which should be the re-test request
+        const retestComment = existingEscalation.comments?.slice().pop();
+        let commentHtml = '<li>Please perform the test again and update the status.</li>';
 
-    statusHtml = `
-      <div style="background: #e2f0d9; border-left: 4px solid #548235; padding: 12px; border-radius: 4px; margin-bottom: 12px; color: #333;">
-        <strong style="font-size: 1.1em;">✅ This failure has been escalated.</strong><br>
-        <ul style="margin: 8px 0 0 20px; padding: 0; font-size: 0.9em; list-style-position: inside;">
-          <li><strong>${originText}</strong></li>
-          <li><strong>Timestamp:</strong> ${new Date(existingEscalation.createdAt).toLocaleString()}</li>
-        </ul>
-      </div>
-    `;
+        if (retestComment) {
+            commentHtml = `
+                <li style="margin-top: 8px;">
+                    <strong>Supervisor's Comment:</strong>
+                    <em style="display: block; background: #fff; padding: 8px; border-radius: 3px; margin-top: 4px;">"${retestComment.text}"</em>
+                </li>
+            `;
+        }
 
+        statusHtml = `
+            <div style="background: #cce5ff; border-left: 4px solid #007bff; padding: 12px; border-radius: 4px; margin-bottom: 12px; color: #004085;">
+                <strong style="font-size: 1.1em;">🔁 A re-test has been requested for this failure.</strong><br>
+                <ul style="margin: 8px 0 0 20px; padding: 0; font-size: 0.9em; list-style-position: inside;">
+                    <li><strong>Status:</strong> <span style="text-transform: capitalize;">Re-test Requested</span></li>
+                    ${commentHtml}
+                </ul>
+            </div>
+        `;
+    } else {
+  
+        statusHtml = `
+          <div style="background: #e2f0d9; border-left: 4px solid #548235; padding: 12px; border-radius: 4px; margin-bottom: 12px; color: #333;">
+            <strong style="font-size: 1.1em;">✅ This failure has been escalated.</strong><br>
+            <ul style="margin: 8px 0 0 20px; padding: 0; font-size: 0.9em; list-style-position: inside;">
+              <li><strong>Status:</strong> <span style="text-transform: capitalize;">${existingEscalation.status}</span></li>
+              <li><strong>${originText}</strong></li>
+              <li><strong>Timestamp:</strong> ${new Date(existingEscalation.createdAt).toLocaleString()}</li>
+            </ul>
+          </div>
+        `;
+    }
+
+    // Don't show escalation action buttons for admins
     if (!isAdmin) {
-      actionsHtml = `
-        <button id="acknowledgeBtn" style="background: #28a745; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Acknowledge</button>
-      `;
-      if (isSupervisor) {
+      if (existingEscalation.status === 'open' && isEscalatedToCurrentUser) {
+        actionsHtml = `
+          <button id="acknowledgeBtn" style="background: #28a745; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Acknowledge</button>
+        `;
+      } else if (existingEscalation.status === 'acknowledged' && isEscalatedToCurrentUser) {
+        actionsHtml = `
+          <button id="resolveBtn" style="background: #007bff; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1;">Resolve</button>
+        `;
+      } else if (existingEscalation.status !== 'retest-requested') {
+        actionsHtml = `
+          <button disabled style="background: #999; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: not-allowed; font-weight: bold; flex-grow: 1;">
+            Already Escalated
+          </button>
+        `;
+      }
+
+      // Add "Request Retest" button for supervisors if the escalation is open or acknowledged
+      if (isSupervisor && (existingEscalation.status === 'open' || existingEscalation.status === 'acknowledged')) {
         actionsHtml += `
           <button id="requestRetestBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; flex-grow: 1; margin-top: 10px;">
             Request Re-Test
           </button>
         `;
       }
-      const placeholder = isSupervisor ? 'Add a comment (required for re-test)...' : 'Add an optional comment...';
-      actionsHtml += `<textarea id="escalationComment" placeholder="${placeholder}" style="width: 100%; box-sizing: border-box; height: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: inherit; margin-top: 10px;"></textarea>`;
+      
+      // Add comment box if any action is possible
+            // Add comment box if any action is possible
+      if (actionsHtml) {
+        const placeholder = (isSupervisor && (existingEscalation.status === 'open' || existingEscalation.status === 'acknowledged'))
+          ? 'Add a comment (required for re-test)...'
+          : 'Add an optional comment...';
+        actionsHtml += `<textarea id="escalationComment" placeholder="${placeholder}" style="width: 100%; box-sizing: border-box; height: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: inherit; margin-top: 10px;"></textarea>`;
+      }
+
     } else {
+      // For admins, show a message explaining they don't need to escalate
       actionsHtml = `
         <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; color: #495057; font-style: italic;">
           As an admin, you don't need to manage escalations directly. 
           You can approve or deny deviation/dispensation requests through the admin panel.
         </div>
       `;
-      const pendingCount = window.deviationSystem?.getPendingDeviations()?.length || 0;
+    }
+    
+    // Add deviation button for supervisors if an escalation exists
+     // For admins, add quick access to deviation management
+    if (isAdmin) {
+      const pendingCount = window.deviationSystem.getPendingDeviations().length;
       if (pendingCount > 0) {
         actionsHtml += `
           <button id="adminDeviationPanelBtn" style="margin-top: 12px; background: #dc3545; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">
@@ -436,6 +506,7 @@ function _buildEscalationManagementSection(existingEscalation) {
       }
     }
   } else if (!isAdmin) {
+    // Only show escalation option for non-admins
     statusHtml = `
       <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
         <strong>⚠️ Action Required:</strong> This failure has not been escalated yet.
@@ -448,6 +519,7 @@ function _buildEscalationManagementSection(existingEscalation) {
       <textarea id="escalationComment" placeholder="Add an optional comment before escalating..." style="width: 100%; box-sizing: border-box; height: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; font-family: inherit; margin-top: 10px;"></textarea>
     `;
   } else {
+    // For admins, show a message explaining they don't need to escalate
     statusHtml = `
       <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
         <strong>ℹ️ Information:</strong> This failure has not been escalated yet.
@@ -477,71 +549,27 @@ function _buildEscalationManagementSection(existingEscalation) {
     </div>
   `;
 }
-async function showDetailedFailureModal(ringInfo, wellName) {
+
+/**
+ * Displays a detailed modal for a specific valve failure.
+ * It checks if the failure has already been escalated and updates the UI accordingly.
+ *
+ * @param {object} ringInfo - An object containing details about the failed ring (label, color, message, failureCode, etc.).
+ * @param {string} wellName - The name of the well where the failure occurred.
+ */
+// Updated showDetailedFailureModal function with admin deviation panel access
+function showDetailedFailureModal(ringInfo, wellName) {
   console.log("Opening failure modal for", wellName, ringInfo);
   const existingModal = document.getElementById('failureDetailModal');
   if (existingModal) existingModal.remove();
 
-  // Use exactly what is sent to backend: wellId from window.wells, ringInfo.valveId
-  const wellId = (Array.isArray(window.wells) ? window.wells.find(w => w.name === wellName) : null)?.id;
-  const valveId = ringInfo?.valveId;
-
-  if (!wellId || !valveId) {
-    console.warn('Missing wellId or valveId for fetching escalation', { wellName, wellId, valveId });
-    showTemporaryMessage('Unable to load escalation: missing well/valve identifier', 'error');
-    return;
-  }
-
-  // Fetch the escalation record from backend (display-only)
-  let record = null;
-  try {
-    const resp = await fetch(`http://10.226.112.188:5000/api/integrity_test/failure?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-     
-      record = Array.isArray(data) ? data[data.length - 1] : data;
-     
-    } else {
-      console.warn('Failed to fetch escalation from DB', resp.status, await resp.text().catch(() => ''));
-    }
-  } catch (e) {
-    console.warn('Error fetching escalation from DB', e);
-  }
-
+  const existingEscalation = window.escalationSystem.getEscalationForValve(wellName, ringInfo.valveId);
   
-
-  // Map strictly to backend fields (no status usage)
-  const failureCode = record?.failureCode ?? record?.code ?? 'N/A';
-  const matrixCategory = record?.matrixCategory ?? record?.matrix_category ?? 'N/A';
-  const failureDescription = record?.failureDescription ?? record?.description ?? 'N/A';
-  const requiredAction = record?.requiredAction ?? record?.required_action ?? 'N/A';
-  const createdBy = record?.createdBy ?? record?.created_by ?? window.AuthService.currentUserData?.email ?? 'N/A';
-  const createdAt = record?.created_at ?? record?.createdAt ?? null;
-  const escalationId = record?.escalationId ?? record?.id ?? 'N/A';
-
-
-  
-  // Build DB-backed object (omit any status)
-  const dbEscalation = record ? {
-    id: escalationId,
-    wellName,
-    wellId,
-    valveId,
-    createdAt,
-
-    creatorRole: record?.creatorRole || '',
-    escalatedTo: record?.escalatedTo || '',
-    comments: record?.comments || [],
-    failureDetails: {
-      failureCode,
-      matrixCategory,
-      failureReason: failureDescription,
-      matrixDescription: requiredAction
-    }
-  } : null;
+  // Log debugging info for escalation matching
+  if (existingEscalation) {
+    console.log("Found existing escalation:", existingEscalation);
+    console.log("Current user:", window.AuthService.currentUserData);
+  }
 
   const backdrop = document.createElement('div');
   backdrop.id = 'failureDetailModal';
@@ -551,72 +579,32 @@ async function showDetailedFailureModal(ringInfo, wellName) {
     align-items: center; justify-content: center; backdrop-filter: blur(5px);
   `;
 
-  const barColor = (typeof getColorForCode === 'function' && failureCode !== 'N/A')
-    ? getColorForCode(failureCode)
-    : '#6c757d';
-
   const modal = document.createElement('div');
   modal.style.cssText = `
     background: #ffffff; color: #333; border-radius: 8px; padding: 24px;
     width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto;
     position: relative; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-    border-top: 5px solid ${barColor};
+    border-top: 5px solid ${getColorForCode(ringInfo.failureCode)};
   `;
 
-  const mitigatingAction = typeof window.wellFailureModel?.getMitigatingAction === 'function'
-    ? window.wellFailureModel.getMitigatingAction(failureCode)
-    : null;
-
-  const infoBlock = record ? `
-    <div style="background: #e2f0d9; border-left: 4px solid #548235; padding: 12px; border-radius: 4px; margin-bottom: 12px; color: #333;">
-      <strong style="font-size: 1.1em;">Escalation Info</strong><br>
-      <ul style="margin: 8px 0 0 20px; padding: 0; font-size: 0.9em; list-style-position: inside;">
-        <li><strong>ID:</strong> ${escalationId}</li>
-        <li><strong>Created By:</strong> ${createdBy}</li>
-        <li><strong>Timestamp:</strong> ${createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}</li>
-      </ul>
-    </div>
-  ` : `
-    <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-      <strong>No escalation record found for this well/valve.</strong>
-    </div>
-  `;
-
-  const escalationManagementHtml = _buildEscalationManagementSection(dbEscalation);
+  const mitigatingAction = window.wellFailureModel?.getMitigatingAction(ringInfo.failureCode);
+  const matrixFailure = getMatrixFailureDetails(ringInfo.matrixCategory, ringInfo.failureNumber);
+  
+  const escalationManagementHtml = _buildEscalationManagementSection(existingEscalation);
 
   modal.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
       <h3 style="margin: 0; font-size: 1.5em;">Failure Details: ${ringInfo.label} (${wellName})</h3>
       <button id="closeModal" title="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
     </div>
-
-    ${infoBlock}
-
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
-      <div>
-        <h4 style="margin: 0 0 8px 0;">Failure Code & Category</h4>
-        <p style="margin: 0;">Code ${failureCode} (${typeof formatCategoryName === 'function' ? formatCategoryName(matrixCategory) : matrixCategory})</p>
-      </div>
-      <div>
-        <h4 style="margin: 0 0 8px 0;">Traffic Light Status</h4>
-        <p style="margin: 0; text-transform: capitalize; font-weight: bold; color: ${barColor};">
-          ${mitigatingAction ? (mitigatingAction.trafficLight || 'Unknown').toUpperCase() : 'UNKNOWN'}
-        </p>
-      </div>
+      <div><h4 style="margin: 0 0 8px 0;">Failure Code & Category</h4><p style="margin: 0;">Code ${ringInfo.failureCode} (${formatCategoryName(ringInfo.matrixCategory)})</p></div>
+      <div><h4 style="margin: 0 0 8px 0;">Traffic Light Status</h4><p style="margin: 0; text-transform: capitalize; font-weight: bold; color: ${getColorForCode(ringInfo.failureCode)};">${mitigatingAction ? mitigatingAction.trafficLight.toUpperCase() : 'Unknown'}</p></div>
     </div>
-
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0;">Matrix Failure Description:</h4>
-      <p style="margin: 0; line-height: 1.5;">${failureDescription}</p>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 8px 0;">Required Action:</h4>
-      <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.5;">${requiredAction}</div>
-    </div>
-
+    <div style="margin-bottom: 20px;"><h4 style="margin: 0 0 8px 0;">Matrix Failure Description:</h4><p style="margin: 0; line-height: 1.5;">${matrixFailure ? matrixFailure.description : 'Description not available'}</p></div>
+    <div style="margin-bottom: 20px;"><h4 style="margin: 0 0 8px 0;">Required Action:</h4><div style="background: #f5f5f5; padding: 12px; border-radius: 4px; line-height: 1.5;">${mitigatingAction ? mitigatingAction.description : 'Action not defined'}</div></div>
+    <div style="margin-bottom: 20px;"><h4 style="margin: 0 0 8px 0;">Specific Test Failure Reason:</h4><p style="margin: 0; font-style: italic;">${ringInfo.message.split(' - Code')[0]}</p></div>
     ${escalationManagementHtml}
-
     <div style="text-align: right; margin-top: 24px; border-top: 1px solid #eee; padding-top: 15px;">
       <button id="closeModalBtn" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Close</button>
     </div>
@@ -637,70 +625,85 @@ async function showDetailedFailureModal(ringInfo, wellName) {
     }
   };
   document.addEventListener('keydown', escapeHandler);
-
-  // --- Event handlers (no status updates sent) ---
+  
+  // --- DYNAMIC EVENT LISTENERS ---
   const commentEl = document.getElementById('escalationComment');
 
-  // Escalate (if shown)
   const escalateBtn = document.getElementById('escalateBtn');
   if (escalateBtn) {
-    escalateBtn.onclick = async () => {
+    escalateBtn.onclick = () => {
       const comment = commentEl?.value.trim() || '';
-      const action = window.wellFailureModel?.getMitigatingAction?.(ringInfo.failureCode);
       const failureDetails = {
-        failureReason: ringInfo.message,
-        failureCode: ringInfo.failureCode,
+        failureReason: ringInfo.message, 
+        failureCode: ringInfo.failureCode, 
         matrixCategory: ringInfo.matrixCategory,
-        trafficLight: action?.trafficLight || 'red',
-        matrixDescription: action?.description || 'Action required',
-        wellType: typeof getWellTypeKey === 'function' ? getWellTypeKey(wellName) : '',
+        trafficLight: getTrafficLightFromCode(ringInfo.failureCode), // Use helper function
+        matrixDescription: mitigatingAction ? mitigatingAction.description : 'Action required',
+        wellType: getWellTypeKey(wellName), 
         timestamp: new Date().toISOString()
       };
-      const created = await window.escalationSystem.createEscalation(wellName, valveId, failureDetails, true);
-      if (created && comment) {
-        window.escalationSystem.addCommentToEscalation(created.id, comment);
+      
+      console.log("Creating escalation with details:", failureDetails);
+      const escalation = window.escalationSystem.createEscalation(wellName, ringInfo.valveId, failureDetails, true);
+      
+      if (escalation && comment) {
+        window.escalationSystem.addCommentToEscalation(escalation.id, comment);
       }
+      
       showTemporaryMessage(`Failure for ${wellName} escalated successfully!`, 'success');
       closeModal();
       showDetailedFailureModal(ringInfo, wellName);
     };
   }
 
-  // Acknowledge: add optional comment, update DB, then auto-open deviation
   const acknowledgeBtn = document.getElementById('acknowledgeBtn');
-  if (acknowledgeBtn && dbEscalation) {
-// inside showDetailedFailureModal, after you fetched `record` from /failure
-    acknowledgeBtn.onclick = async () => {
-      const comment = document.getElementById('escalationComment')?.value.trim() || '';
-      // send your escalation update to backend here (no status fields)
-      if (comment) { /* optionally send comment to backend if supported */ }
+  if (acknowledgeBtn) {
+    acknowledgeBtn.onclick = () => {
+      const comment = commentEl?.value.trim() || '';
+      console.log("Acknowledging escalation:", existingEscalation.id);
+      window.escalationSystem.acknowledgeEscalation(existingEscalation.id, comment);
+      showTemporaryMessage('Escalation acknowledged!', 'info');
       closeModal();
-      // open deviation form using the backend failure id only
-      window.deviationSystem.showDeviationRequestForm(record.id);
+      
+      // Check if well has failure and open deviation modal if needed
+      if (existingEscalation && existingEscalation.failureDetails) {
+        console.log("Opening deviation modal after acknowledgment");
+        // Small delay to ensure acknowledgment is processed first
+        setTimeout(() => {
+          window.deviationSystem.showDeviationRequestForm(existingEscalation.id);
+        }, 300);
+      } else {
+        showTemporaryMessage('Acknowledged', 'info');
+      }
     };
   }
-
-  // Request Re-Test: require comment, add comment, update DB
-  const requestRetestBtn = document.getElementById('requestRetestBtn');
-  if (requestRetestBtn && dbEscalation) {
-    requestRetestBtn.onclick = async () => {
+  
+  const resolveBtn = document.getElementById('resolveBtn');
+  if (resolveBtn) {
+    resolveBtn.onclick = () => {
+      const comment = commentEl?.value.trim() || '';
+      console.log("Resolving escalation:", existingEscalation.id);
+      window.escalationSystem.resolveEscalation(existingEscalation.id, comment);
+      showTemporaryMessage('Escalation resolved!', 'success');
+      closeModal();
+      showDetailedFailureModal(ringInfo, wellName);
+    };
+  }
+  
+   const requestRetestBtn = document.getElementById('requestRetestBtn');
+  if (requestRetestBtn) {
+    requestRetestBtn.onclick = () => {
       const comment = commentEl?.value.trim();
       if (!comment) {
         showTemporaryMessage('A comment is required to request a re-test.', 'error');
-        if (commentEl) {
-          commentEl.style.border = '2px solid red';
-          commentEl.focus();
+        if(commentEl) {
+            commentEl.style.border = '2px solid red';
+            commentEl.focus();
         }
         return;
       }
-      const update = {
-        ...dbEscalation,
-        comments: [
-          ...(dbEscalation.comments || []),
-          { text: `Re-test requested. Comment: ${comment}`, author: window.AuthService?.currentUserData?.email || 'system', timestamp: new Date() }
-        ]
-      };
-      await window.escalationSystem.updateEscalationInDatabase(update);
+      console.log("Requesting re-test for escalation:", existingEscalation.id);
+      window.escalationSystem.requestRetest(existingEscalation.id, comment);
       showTemporaryMessage('Re-test requested!', 'info');
       closeModal();
       showDetailedFailureModal(ringInfo, wellName);
@@ -708,28 +711,36 @@ async function showDetailedFailureModal(ringInfo, wellName) {
   }
 
   const viewAllBtn = document.getElementById('viewAllEscalationsBtn');
-  if (viewAllBtn && typeof window.escalationSystem.showManagementModal === 'function') {
-    viewAllBtn.onclick = () => window.escalationSystem.showManagementModal();
+  if(viewAllBtn && typeof window.escalationSystem.showManagementModal === 'function') {
+      viewAllBtn.onclick = () => window.escalationSystem.showManagementModal();
   } else if (viewAllBtn) {
-    viewAllBtn.onclick = () => showEscalationManagementModal();
-  }
-
-  const createDeviationBtn = document.getElementById('createDeviationBtn');
-  if (createDeviationBtn && window.deviationSystem && dbEscalation) {
-    createDeviationBtn.onclick = () => window.deviationSystem.showDeviationRequestForm(dbEscalation.id);
-  }
-
-  const viewDeviationsBtn = document.getElementById('viewDeviationsBtn');
-  if (viewDeviationsBtn && window.deviationSystem && dbEscalation) {
-    viewDeviationsBtn.onclick = () => window.deviationSystem.showDeviationsForEscalation(dbEscalation.id);
-  }
-
-  const adminDeviationPanelBtn = document.getElementById('adminDeviationPanelBtn');
-  if (adminDeviationPanelBtn && window.deviationSystem) {
-    adminDeviationPanelBtn.onclick = () => window.deviationSystem.showDeviationAdminPanel();
+      viewAllBtn.onclick = () => showEscalationManagementModal();
   }
   
+  // Deviation button handlers
+  const createDeviationBtn = document.getElementById('createDeviationBtn');
+  if (createDeviationBtn && window.deviationSystem && existingEscalation) {
+    createDeviationBtn.onclick = () => {
+      window.deviationSystem.showDeviationRequestForm(existingEscalation.id);
+    };
+  }
+  
+  const viewDeviationsBtn = document.getElementById('viewDeviationsBtn');
+  if (viewDeviationsBtn && window.deviationSystem && existingEscalation) {
+    viewDeviationsBtn.onclick = () => {
+      window.deviationSystem.showDeviationsForEscalation(existingEscalation.id);
+    };
+  }
+  
+  // Admin panel access
+  const adminDeviationPanelBtn = document.getElementById('adminDeviationPanelBtn');
+  if (adminDeviationPanelBtn && window.deviationSystem) {
+    adminDeviationPanelBtn.onclick = () => {
+      window.deviationSystem.showDeviationAdminPanel();
+    };
+  }
 }
+
 // Update the showEscalationManagementModal function to show who created the escalation
 function showEscalationManagementModal(wellName = null) {
   const existingModal = document.getElementById('escalationManagementModal');
@@ -865,120 +876,6 @@ function showEscalationManagementModal(wellName = null) {
     };
   }
 }
-
-
-/**
- * Determines the failure category and number from valve test results
- * using the well failure matrix for accurate categorization.
- * 
- * @param {Object} testResult - The valve test result data
- * @returns {Object} An object with category and number properties
- */
-function getFailureCategoryAndNumber(testResult) {
-  if (!testResult) {
-    return { category: null, number: null };
-  }
-
-  // If the test passed, return null values
-  if (testResult.pass === true) {
-    return { category: null, number: null };
-  }
-
-  // Get the current well type from global context
-  const wellName = window.currentWellContext?.name;
-  const well = window.wells.find(w => w.name === wellName);
-  const wellType = well ? getWellTypeKey(well.type) : 'Producer'; // Fallback to Producer
-
-  // Get valve type
-  const valveType = testResult.valve_type || '';
-  const valveId = testResult.valve_id || '';
-  
-  // Extract failure information
-  const failureReasons = testResult.failure_reasons || [];
-  const isLeakRateExceeded = failureReasons.some(reason => 
-    reason.includes('leak rate') || reason.includes('exceed')
-  );
-  
-  // Determine if this is a surface or subsurface valve
-  const isSubsurfaceValve = valveType.toUpperCase() === 'SCSSV';
-  
-  // Check if multiple valves failed (need to determine from global context)
-  const multipleValvesFailed = checkForMultipleFailedValves(wellName);
-
-  // Initialize with null values
-  let category = null;
-  let number = null;
-
-  // Step 1: Determine the category
-  if (isSubsurfaceValve) {
-    category = multipleValvesFailed ? 'multipleSubSurfaceFailures' : 'singleSubSurfaceFailure';
-  } else {
-    category = multipleValvesFailed ? 'multipleSurfaceFailures' : 'singleSurfaceFailure';
-  }
-
-  // Step 2: Find the appropriate failure number by searching through the matrix
-  if (category && window.wellFailureMatrix[category]) {
-    // Get all entries in the selected category
-    const categoryEntries = window.wellFailureMatrix[category];
-    
-    // Find the most appropriate failure description based on valve type
-    for (const [failureNum, failureData] of Object.entries(categoryEntries)) {
-      const description = failureData.description.toLowerCase();
-      const valveTypeUpper = valveType.toUpperCase();
-      
-      // Match based on valve type
-      if (description.includes(valveTypeUpper)) {
-        number = parseInt(failureNum);
-        break;
-      }
-      
-      // For SCSSV and leak rate failures
-      if (isSubsurfaceValve && isLeakRateExceeded && 
-          description.includes('completion leak') && description.includes('above allowable leak rate')) {
-        number = parseInt(failureNum);
-        break;
-      }
-    }
-    
-    // If still not found, use first available number as fallback
-    if (number === null && Object.keys(categoryEntries).length > 0) {
-      number = parseInt(Object.keys(categoryEntries)[0]);
-    }
-  }
-
-  console.log(`Dynamically categorized failure for ${valveType} as ${category}:${number}`, failureReasons);
-  return { category, number };
-}
-
-/**
- * Helper function to check if multiple valves have failed for the well
- * @param {string} wellName - The name of the well to check
- * @returns {boolean} True if multiple valves have failed tests
- */
-function checkForMultipleFailedValves(wellName) {
-  if (!wellName || !window.valveTestResults || !window.valveTestResults[wellName]) {
-    return false;
-  }
-  
-  const wellResults = window.valveTestResults[wellName];
-  let failedValveCount = 0;
-  
-  for (const valveId in wellResults) {
-    if (wellResults.hasOwnProperty(valveId)) {
-      const tests = wellResults[valveId];
-      if (!Array.isArray(tests) || tests.length === 0) continue;
-      
-      // Check most recent test result
-      const latestTest = tests[tests.length - 1];
-      if (latestTest && latestTest.pass === false) {
-        failedValveCount++;
-      }
-    }
-  }
-  
-  return failedValveCount > 1;
-}
-
 // Helper functions for escalation display
 function getPriorityColor(priority) {
   const colors = {
@@ -1088,3 +985,4 @@ window.addEscalationIndicatorToWell = addEscalationIndicatorToWell;
 window.addEscalationManagementButton = addEscalationManagementButton;
 window.updateEscalationButtonCount = updateEscalationButtonCount;
 window.debugShowCurrentUser = debugShowCurrentUser;
+

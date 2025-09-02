@@ -1,0 +1,1 @@
+//const response = await fetch(`http://10.226.113.68:5000/api/integrity_test/action?id=${encodeURIComponent(escalation.id)}`, {

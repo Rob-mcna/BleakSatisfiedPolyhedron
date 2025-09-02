@@ -697,6 +697,101 @@ function toggleValveTestDetails(wellId, valveId) {
   }
 }
 
+function validateTestOnFrontend(result, valveLimits) {
+    // Debug the incoming data
+    console.log("Validating test with data:", result);
+    console.log("Using valve limits:", valveLimits);
+    
+    // Ensure we have all necessary data structures
+    if (!result) {
+        console.error("No result data to validate");
+        return null;
+    }
+    
+    // Make a copy to avoid modifying the original
+    const validatedResult = { ...result };
+    
+    // IMPORTANT: If the backend already provided a 'pass' value, preserve it
+    const backendPassValue = validatedResult.pass;
+    
+    // Initialize validation fields if they don't exist
+    if (typeof validatedResult.pass !== 'boolean') {
+        validatedResult.pass = false;
+    }
+    validatedResult.test_valid = validatedResult.test_valid !== false; // Default to true
+    validatedResult.leak_rate_pass = validatedResult.leak_rate_pass || false;
+    validatedResult.failure_reasons = validatedResult.failure_reasons || [];
+    
+    // Only perform validation if required
+    if (typeof backendPassValue !== 'boolean') {
+        // 1. Validate leak rate with better error handling
+        const leakRate = parseFloat(validatedResult.leak_rate_scfm);
+        const criticalRate = parseFloat(valveLimits.critical_rate);
+        
+        console.log(`Checking leak rate: ${leakRate} <= ${criticalRate}`);
+        
+        if (isNaN(leakRate) || isNaN(criticalRate)) {
+            console.warn("Invalid leak rate or critical rate values:", { leakRate, criticalRate });
+            validatedResult.leak_rate_pass = false;
+        } else {
+            validatedResult.leak_rate_pass = leakRate <= criticalRate;
+            console.log(`Leak rate check result: ${validatedResult.leak_rate_pass}`);
+        }
+        
+        // 2. Validate pressure conditions with better error handling
+        let pressureValid = true;
+        if (!validatedResult.thresholds) {
+            console.warn("Missing thresholds object in test result");
+            pressureValid = false;
+        } else {
+            const { Pa, Pc } = validatedResult.thresholds;
+            console.log(`Checking Pa <= Pc: ${Pa} <= ${Pc}`);
+            
+            if (Pa !== undefined && Pc !== undefined && Pa > Pc) {
+                validatedResult.test_valid = false;
+                pressureValid = false;
+                console.log("Invalid test configuration: Pa > Pc");
+            }
+        }
+        
+        // 3. Set pass/fail flag with better error handling
+        let pass_fail = true;
+        if (!validatedResult.thresholds) {
+            pass_fail = false;
+        } else {
+            const { P2, Pf } = validatedResult.thresholds;
+            console.log(`Checking P2 <= Pf: ${P2} <= ${Pf}`);
+            
+            if (P2 !== undefined && Pf !== undefined && P2 > Pf) {
+                pass_fail = false;
+                console.log("Internal leak failure: P2 > Pf");
+            }
+        }
+        
+        // Final pass calculation
+        validatedResult.pass = validatedResult.test_valid && pass_fail && validatedResult.leak_rate_pass;
+        console.log(`Calculated test result - pass: ${validatedResult.pass}, components: valid=${validatedResult.test_valid}, pass_fail=${pass_fail}, leak_rate_pass=${validatedResult.leak_rate_pass}`);
+    } else {
+        console.log(`Using backend pass value: ${backendPassValue}`);
+    }
+    
+    // If failure reasons array is empty, populate it
+    if (validatedResult.failure_reasons.length === 0 && !validatedResult.pass) {
+        if (!validatedResult.test_valid) {
+            validatedResult.failure_reasons.push("Configuración de prueba inválida (Pa > Pc)");
+        }
+        if (validatedResult.thresholds && validatedResult.thresholds.P2 > validatedResult.thresholds.Pf) {
+            validatedResult.failure_reasons.push("Falla de fuga interna (P2 > Pf)");
+        }
+        if (!validatedResult.leak_rate_pass) {
+            validatedResult.failure_reasons.push("Tasa de fuga excede el máximo permitido (Q_act > critical_rate)");
+        }
+    }
+    
+    console.log("Final validated result:", validatedResult);
+    return validatedResult;
+}
+
 function formatTestTimestampForDropdown(test) {
   if (test && test.utc_timestamp) {
     return new Date(test.utc_timestamp).toLocaleString();

@@ -28,21 +28,22 @@ function renderWellsSection() {
   }
     // ... inside renderWellsSection ...
   html += `<label for="wellDropdown" style="font-weight:bold;">Select Well:</label>
-    <select id="wellDropdown" style="margin:0 12px 24px 8px;">
-    <option value="" selected disabled>-- Select Well --</option>
-    ${(window.wells || [])
-      .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
-      .map(w => `<option value="${w.id}">${w.name || w.id}</option>`).join('')}
-  </select>
+  <select id="wellDropdown" style="margin:0 12px 24px 8px;">
+  <option value="" selected disabled>-- Select Well --</option>
+  ${(window.wells || [])
+    .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+    .map(w => `<option value="${w.id}">${w.name || w.id}</option>`).join('')}
+</select>
 
-    <div class="well-layout" id="wellInlineLayout" style="display:none;">
-      <div id="wellSchematicArea"></div>
-      <div class="valve-panels-container">
-        <div id="valveInputPanel"></div>
-        <div id="valveTestResultsPanel"></div>
-      </div>
-    </div>
-    <div id="wellDetailsContainer" style="margin-top:18px;"></div>`;
+<!-- Fixed layout: Schematic + Results side-by-side, Input below -->
+<div class="well-layout" id="wellInlineLayout" style="display:none;">
+  <div class="well-schematic-and-results-wrapper">
+    <div id="wellSchematicArea"></div>
+    <div id="valveTestResultsPanel"></div>
+  </div>
+  <div id="valveInputPanel"></div>
+</div>
+<div id="wellDetailsContainer" style="margin-top:18px;"></div>`;
 
   wellListDiv.innerHTML = html;
 
@@ -118,11 +119,53 @@ function getMostRecentTestedWellId() {
 // MODIFIED INITIALIZATION FUNCTION
 
 
-
+async function loadValveTestStatuses(wellId) {
+  console.log(`Loading valve test results for well ${wellId}`);
+  try {
+    // First check if we already have the test results in memory
+    const wellConfig = (window.wells || []).find(w => w.id === wellId);
+    if (!wellConfig) {
+      console.error(`Could not find well with ID ${wellId}`);
+      return {};
+    }
+    
+    // If we already have results in memory, use those
+    if (window.valveTestResults && 
+        (window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name])) {
+      console.log(`Using cached test results for well ${wellId}`);
+      return window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name];
+    }
+    
+    // Otherwise fetch from API
+    console.log(`Fetching test results from API for well ${wellId}`);
+    const response = await fetch(`http://10.226.112.153:5000/api/integrity_test/results?well=${wellId}`);
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch valve test results for well ${wellId}: ${response.statusText}`);
+      return {};
+    }
+    
+    const testResults = await response.json();
+    
+    // Store results in memory using both wellId and well.name as keys for easier lookup
+    if (!window.valveTestResults) window.valveTestResults = {};
+    window.valveTestResults[wellId] = testResults;
+    if (wellConfig.name) window.valveTestResults[wellConfig.name] = testResults;
+    
+    console.log(`Successfully loaded test results for well ${wellId}`, testResults);
+    return testResults;
+    
+  } catch (error) {
+    console.error(`Error loading valve test statuses for well ${wellId}:`, error);
+    return {};
+  }
+}
 // MODIFIED: This function is now async to handle fetching the schematic// CORRECTED: This function now uses the pre-loaded schematicsMap.
 // FINAL CORRECTED VERSION
 // This function is now async to handle fetching the schematic from its URL.
 async function renderWellSchematicAndPanel(wellId) {
+
+  await loadValveTestStatuses(wellId);
   const wellConfig = (window.wells || []).find(w => w.id === wellId);
   const wellInlineLayout = document.getElementById('wellInlineLayout');
   const wellSchematicArea = document.getElementById('wellSchematicArea');
@@ -137,7 +180,7 @@ async function renderWellSchematicAndPanel(wellId) {
   // --- Schematic Loading Logic ---
   const schematicPath = wellConfig.christmasTree && wellConfig.christmasTree.schematic;
   if (schematicPath) {
-    const fullSchematicURL = `http://10.226.112.213:5000${schematicPath}`;
+    const fullSchematicURL = `http://10.226.112.153:5000${schematicPath}`;
     wellSchematicArea.innerHTML = `<div class="loading-schematic">Loading schematic...</div>`;
     try {
       const response = await fetch(fullSchematicURL);
@@ -155,7 +198,7 @@ async function renderWellSchematicAndPanel(wellId) {
   // --- Fetch all valves and make them available ---
   let allValves = [];
   try {
-    const valvesResponse = await fetch("http://10.226.112.213:5000/api/valves/");
+    const valvesResponse = await fetch("http://10.226.112.153:5000/api/valves/");
     if (valvesResponse.ok) {
       allValves = await valvesResponse.json();
       window.allValves = allValves; // Make globally accessible
@@ -182,7 +225,7 @@ async function renderWellSchematicAndPanel(wellId) {
           // --- CORRECTED Valve Coloring Logic ---
           // Use the valve's ID to look up its test results
           let color = '#e6c23a'; // Default: Untested (yellow)
-          const wellTests = window.valveTestResults[wellId];
+          const wellTests = window.valveTestResults[wellConfig.name];
           if (wellTests && wellTests[foundValve.id] && Array.isArray(wellTests[foundValve.id]) && wellTests[foundValve.id].length > 0) {
             const latestTest = wellTests[foundValve.id][wellTests[foundValve.id].length - 1]; 
             if (latestTest && typeof latestTest === 'object') {
@@ -276,7 +319,7 @@ function renderValveTestResultsPanel(currentWellId) {
   const panel = document.getElementById('valveTestResultsPanel');
   if (!panel) return;
 
-  panel.style.width = '400px'; 
+
 
   const mainBlue = '#81b2da'; 
   const mainWhite = '#0f0f0fff';
@@ -488,6 +531,7 @@ function renderValveTestResultsPanel(currentWellId) {
   html += `</div>`;
 
   panel.innerHTML = html;
+  
 }
 function renderWellDetailsButton(wellId) {
   const wellDetailsContainer = document.getElementById('wellDetailsContainer');
@@ -565,8 +609,121 @@ function renderWellDetailsButton(wellId) {
         detailsBox.style.display = "block";
       };
   }
+}
+
+/**
+ * Determines the failure category and number from valve test results
+ * using the well failure matrix for accurate categorization.
+ * 
+ * @param {Object} testResult - The valve test result data
+ * @returns {Object} An object with category and number properties
+ */
+function getFailureCategoryAndNumber(testResult) {
+  if (!testResult) {
+    return { category: null, number: null };
+  }
+
+  // If the test passed, return null values
+  if (testResult.pass === true) {
+    return { category: null, number: null };
+  }
+
+  // Get the current well type from global context
+  const wellName = window.currentWellContext?.name;
+  const well = window.wells.find(w => w.name === wellName);
+  const wellType = well ? getWellTypeKey(well.type) : 'Producer'; // Fallback to Producer
+
+  // Get valve type
+  const valveType = testResult.valve_type || '';
+  const valveId = testResult.valve_id || '';
+  
+  // Extract failure information
+  const failureReasons = testResult.failure_reasons || [];
+  const isLeakRateExceeded = failureReasons.some(reason => 
+    reason.includes('leak rate') || reason.includes('exceed')
+  );
+  
+  // Determine if this is a surface or subsurface valve
+  const isSubsurfaceValve = valveType.toUpperCase() === 'SCSSV';
+  
+  // Check if multiple valves failed (need to determine from global context)
+  const multipleValvesFailed = checkForMultipleFailedValves(wellName);
+
+  // Initialize with null values
+  let category = null;
+  let number = null;
+
+  // Step 1: Determine the category
+  if (isSubsurfaceValve) {
+    category = multipleValvesFailed ? 'multipleSubSurfaceFailures' : 'singleSubSurfaceFailure';
+  } else {
+    category = multipleValvesFailed ? 'multipleSurfaceFailures' : 'singleSurfaceFailure';
+  }
+
+  // Step 2: Find the appropriate failure number by searching through the matrix
+  if (category && window.wellFailureMatrix[category]) {
+    // Get all entries in the selected category
+    const categoryEntries = window.wellFailureMatrix[category];
+    
+    // Find the most appropriate failure description based on valve type
+    for (const [failureNum, failureData] of Object.entries(categoryEntries)) {
+      const description = failureData.description.toLowerCase();
+      const valveTypeUpper = valveType.toUpperCase();
+      
+      // Match based on valve type
+      if (description.includes(valveTypeUpper)) {
+        number = parseInt(failureNum);
+        break;
+      }
+      
+      // For SCSSV and leak rate failures
+      if (isSubsurfaceValve && isLeakRateExceeded && 
+          description.includes('completion leak') && description.includes('above allowable leak rate')) {
+        number = parseInt(failureNum);
+        break;
+      }
+    }
+    
+    // If still not found, use first available number as fallback
+    if (number === null && Object.keys(categoryEntries).length > 0) {
+      number = parseInt(Object.keys(categoryEntries)[0]);
+    }
+  }
+
+  console.log(`Dynamically categorized failure for ${valveType} as ${category}:${number}`, failureReasons);
+  return { category, number };
+}
+
+/**
+ * Helper function to check if multiple valves have failed for the well
+ * @param {string} wellName - The name of the well to check
+ * @returns {boolean} True if multiple valves have failed tests
+ */
+function checkForMultipleFailedValves(wellName) {
+  if (!wellName || !window.valveTestResults || !window.valveTestResults[wellName]) {
+    return false;
+  }
+  
+  const wellResults = window.valveTestResults[wellName];
+  let failedValveCount = 0;
+  
+  for (const valveId in wellResults) {
+    if (wellResults.hasOwnProperty(valveId)) {
+      const tests = wellResults[valveId];
+      if (!Array.isArray(tests) || tests.length === 0) continue;
+      
+      // Check most recent test result
+      const latestTest = tests[tests.length - 1];
+      if (latestTest && latestTest.pass === false) {
+        failedValveCount++;
+      }
+    }
+  }
+  
+  return failedValveCount > 1;
 }
 
 window.renderWellsSection = renderWellsSection;
 window.renderWellSchematicAndPanel = renderWellSchematicAndPanel;
 window.renderValveTestResultsPanel = renderValveTestResultsPanel;
+

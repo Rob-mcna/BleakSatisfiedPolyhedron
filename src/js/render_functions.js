@@ -28,21 +28,22 @@ function renderWellsSection() {
   }
     // ... inside renderWellsSection ...
   html += `<label for="wellDropdown" style="font-weight:bold;">Select Well:</label>
-    <select id="wellDropdown" style="margin:0 12px 24px 8px;">
-    <option value="" selected disabled>-- Select Well --</option>
-    ${(window.wells || [])
-      .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
-      .map(w => `<option value="${w.id}">${w.name || w.id}</option>`).join('')}
-  </select>
+  <select id="wellDropdown" style="margin:0 12px 24px 8px;">
+  <option value="" selected disabled>-- Select Well --</option>
+  ${(window.wells || [])
+    .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+    .map(w => `<option value="${w.id}">${w.name || w.id}</option>`).join('')}
+</select>
 
-    <div class="well-layout" id="wellInlineLayout" style="display:none;">
-      <div id="wellSchematicArea"></div>
-      <div class="valve-panels-container">
-        <div id="valveInputPanel"></div>
-        <div id="valveTestResultsPanel"></div>
-      </div>
-    </div>
-    <div id="wellDetailsContainer" style="margin-top:18px;"></div>`;
+<!-- Fixed layout: Schematic + Results side-by-side, Input below -->
+<div class="well-layout" id="wellInlineLayout" style="display:none;">
+  <div class="well-schematic-and-results-wrapper">
+    <div id="wellSchematicArea"></div>
+    <div id="valveTestResultsPanel"></div>
+  </div>
+  <div id="valveInputPanel"></div>
+</div>
+<div id="wellDetailsContainer" style="margin-top:18px;"></div>`;
 
   wellListDiv.innerHTML = html;
 
@@ -118,26 +119,80 @@ function getMostRecentTestedWellId() {
 // MODIFIED INITIALIZATION FUNCTION
 
 
+async function loadValveTestStatuses(wellId) {
+  console.log(`Loading valve test results for well ${wellId}`);
+  try {
+    // First check if we already have the test results in memory
+    const wellConfig = (window.wells || []).find(w => w.id === wellId);
+    if (!wellConfig) {
+      console.error(`Could not find well with ID ${wellId}`);
+      return {};
+    }
+    
+    // If we already have results in memory, use those
+    if (window.valveTestResults && 
+        (window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name])) {
+      console.log(`Using cached test results for well ${wellId}`);
+      return window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name];
+    }
+    
+    // Otherwise fetch from API
+    console.log(`Fetching test results from API for well ${wellId}`);
+    const response = await fetch(`http://10.226.112.188:5000/api/integrity_test/results?well=${wellId}`);
+    if (!response.ok) {
+      console.warn(`Failed to fetch valve test results for well ${wellId}: ${response.statusText}`);
+      return {};
+    }
+     
+    const testResults = await response.json();
 
+    console.log(`Fetched test results for well ${wellId}:`, testResults);
+
+    
+        
+    // Store results in memory using both wellId and well.name as keys for easier lookup
+    if (!window.valveTestResults) window.valveTestResults = {};
+    window.valveTestResults[wellId] = testResults;
+    if (wellConfig.name) window.valveTestResults[wellConfig.name] = testResults;
+    
+    console.log(`Successfully loaded test results for well ${wellId}`, testResults);
+    return testResults;
+    
+  } catch (error) {
+    console.error(`Error loading valve test statuses for well ${wellId}:`, error);
+    return {};
+  }
+}
 // MODIFIED: This function is now async to handle fetching the schematic// CORRECTED: This function now uses the pre-loaded schematicsMap.
 // FINAL CORRECTED VERSION
 // This function is now async to handle fetching the schematic from its URL.
+/**
+ * Fixed version of renderWellSchematicAndPanel function with corrected valve coloring logic
+ * @param {string} wellId - The ID of the well to render
+ */
 async function renderWellSchematicAndPanel(wellId) {
+  console.log(`Starting to render schematic for well ${wellId}`);
+  
+  // Load test statuses first to ensure data is available
+  await loadValveTestStatuses(wellId);
+  
   const wellConfig = (window.wells || []).find(w => w.id === wellId);
   const wellInlineLayout = document.getElementById('wellInlineLayout');
   const wellSchematicArea = document.getElementById('wellSchematicArea');
   const valveInputPanel = document.getElementById('valveInputPanel');
 
   if (!wellConfig || !wellInlineLayout || !wellSchematicArea || !valveInputPanel) {
+    console.warn("Missing required elements for rendering well schematic");
     if (wellInlineLayout) wellInlineLayout.style.display = 'none';
     return;
   }
+  
   wellInlineLayout.style.display = 'flex';
 
   // --- Schematic Loading Logic ---
   const schematicPath = wellConfig.christmasTree && wellConfig.christmasTree.schematic;
   if (schematicPath) {
-    const fullSchematicURL = `http://10.226.112.40:5000${schematicPath}`;
+    const fullSchematicURL = `http://10.226.112.188:5000${schematicPath}`;
     wellSchematicArea.innerHTML = `<div class="loading-schematic">Loading schematic...</div>`;
     try {
       const response = await fetch(fullSchematicURL);
@@ -155,21 +210,35 @@ async function renderWellSchematicAndPanel(wellId) {
   // --- Fetch all valves and make them available ---
   let allValves = [];
   try {
-    const valvesResponse = await fetch("http://10.226.112.40:5000/api/valves/");
-    if (valvesResponse.ok) {
-      allValves = await valvesResponse.json();
-      window.allValves = allValves; // Make globally accessible
+    if (!window.allValves || window.allValves.length === 0) {
+      console.log("Fetching valve list from API");
+      const valvesResponse = await fetch("http://10.226.112.188:5000/api/valves/");
+      if (valvesResponse.ok) {
+        allValves = await valvesResponse.json();
+        window.allValves = allValves; // Make globally accessible
+      } else {
+        console.error("Failed to fetch valve list from API.");
+      }
     } else {
-      console.error("Failed to fetch valve list from API.");
+      allValves = window.allValves;
     }
   } catch (error) {
     console.error("Error fetching valve list:", error);
   }
 
+  // Make sure valve test results are properly initialized
+  window.valveTestResults = window.valveTestResults || {};
+  
+  // Log available test results for debugging
+  console.log("Available test results for well:", wellId);
+  console.log("By ID:", window.valveTestResults[wellId]);
+  console.log("By name:", window.valveTestResults[wellConfig.name]);
+
   const svg = wellSchematicArea.querySelector('svg');
   if (svg && allValves.length > 0) {
     // Use a short delay to ensure SVG has rendered
     setTimeout(() => {
+      console.log("Processing SVG elements for valve coloring");
       Array.from(svg.querySelectorAll('g')).forEach(g => {
         const texts = Array.from(g.querySelectorAll('text')).map(t => (t.textContent || '').trim());
         
@@ -180,22 +249,52 @@ async function renderWellSchematicAndPanel(wellId) {
           g.style.cursor = 'pointer';
           
           // --- CORRECTED Valve Coloring Logic ---
-          // Use the valve's ID to look up its test results
-          let color = '#e6c23a'; // Default: Untested (yellow)
-          const wellTests = window.valveTestResults[wellId];
-          if (wellTests && wellTests[foundValve.id] && Array.isArray(wellTests[foundValve.id]) && wellTests[foundValve.id].length > 0) {
-            const latestTest = wellTests[foundValve.id][wellTests[foundValve.id].length - 1]; 
-            if (latestTest && typeof latestTest === 'object') {
-              if (latestTest.pass && latestTest.test_valid && latestTest.leak_rate_pass) {
+          // Default: Untested (yellow)
+          let color = '#e6c23a'; 
+          let testStatus = null;
+          let testDetails = null;
+
+          console.log(`Checking test status for valve: ${foundValve.name} (${foundValve.id})`);
+          
+          // Look in both possible locations for test results
+          const testResultsByWellId = window.valveTestResults[wellId] || {};
+          const testResultsByWellName = window.valveTestResults[wellConfig.name] || {};
+          
+          // Get test results for this valve
+          const valveTests = testResultsByWellId[foundValve.id] || testResultsByWellName[foundValve.id];
+          
+          if (valveTests) {
+            if (Array.isArray(valveTests) && valveTests.length > 0) {
+              testDetails = valveTests[valveTests.length - 1]; // Get latest test
+              testStatus = "array";
+            } else if (typeof valveTests === 'object' && valveTests !== null) {
+              testDetails = valveTests; // Single test object
+              testStatus = "object";
+            }
+            
+            console.log(`Test details for ${foundValve.name}:`, testDetails);
+            
+            if (testDetails) {
+
+              // Simplify the check - directly use the 'pass' property from the backend
+              if (testDetails.status === 'pass') {
                 color = '#19d219'; // Pass (green)
+                console.log(`${foundValve.name} PASSED - Setting color to GREEN`);
               } else {
                 color = '#e64a3a'; // Fail (red)
+                console.log(`${foundValve.name} FAILED - Setting color to RED`);
               }
             }
+          } else {
+            console.log(`No test results found for ${foundValve.name}`);
           }
           
           const mainRect = g.querySelector('rect');
-          if (mainRect) mainRect.setAttribute('fill', color);
+          if (mainRect) {
+            mainRect.setAttribute('fill', color);
+            console.log(`Set color ${color} for valve ${foundValve.name}`);
+          }
+          
           // Set valve name text color to black for visibility
           g.querySelectorAll('text').forEach(t => t.setAttribute('fill', '#000'));
           
@@ -217,7 +316,9 @@ async function renderWellSchematicAndPanel(wellId) {
           };
         }
       });
-    }, 100); // Increased delay slightly for complex SVGs
+    }, 300); // Increased delay for more reliable rendering
+  } else {
+    console.warn("SVG not found or valve list empty");
   }
   
   // Hide panel if no valve is selected
@@ -225,7 +326,6 @@ async function renderWellSchematicAndPanel(wellId) {
      valveInputPanel.style.display = 'none';
   }
 }
-
 function getWellNameById(wellId) {
   if (!window.wells || !Array.isArray(window.wells)) return wellId;
   const well = window.wells.find(w => w.id === wellId);
@@ -276,12 +376,12 @@ function renderValveTestResultsPanel(currentWellId) {
   const panel = document.getElementById('valveTestResultsPanel');
   if (!panel) return;
 
-  panel.style.width = '400px'; 
+
 
   const mainBlue = '#81b2da'; 
   const mainWhite = '#0f0f0fff';
 
-  const trashIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="width:14px; height:14px;" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+/*  const trashIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" style="width:14px; height:14px;" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
   const deleteIconColor = '#E67E22'; 
   const deleteIconHoverColor = '#D35400'; 
   const deleteAllBgColor = 'rgba(230, 126, 34, 0.1)';
@@ -289,21 +389,32 @@ function renderValveTestResultsPanel(currentWellId) {
   const deleteButtonSize = '24px';
   const deleteBadgeSize = '14px';
   const deleteBadgeFontSize = '9px';
-  const deleteBadgeTopRight = '-7px';
+  const deleteBadgeTopRight = '-7px'; */
 
-  const leftBarColorForCard = '#A9D0F5'; 
+  const leftBarColorForCard = '#ffffffff'; 
   const expandIconColorOnBar = mainWhite; 
-  const valveEntryCardBackground = '#2C3E50'; 
-  const valveEntryCardBorder = '#34495E';   
+  const valveEntryCardBackground = '#ffffffff'; 
+  const valveEntryCardBorder = '#ffff';   
 
   window.valveTestResults = window.valveTestResults || {};
+
   window.valveTestWarnings = window.valveTestWarnings || {};
   window.selectedValveTestIndex = window.selectedValveTestIndex || {};
   if (!window.selectedValveTestIndex[currentWellId]) {
     window.selectedValveTestIndex[currentWellId] = {};
   }
 
-  const resultsForWell = window.valveTestResults[currentWellId] || {};
+  let resultsForWell = window.valveTestResults[currentWellId];
+  console.log('comprobando valveTestResults', window.valveTestResults);
+  console.log('comprobando currentWellId', currentWellId);
+  if (!resultsForWell) {
+    // Try by name as well
+    const well = (window.wells || []).find(w => w.id === currentWellId);
+    if (well && well.name) resultsForWell = window.valveTestResults[well.name];
+  }
+  resultsForWell = resultsForWell || {};
+
+  console.log('comprobando resultsForWellqqq', resultsForWell);
   const warningsForWell = window.valveTestWarnings[currentWellId] || {};
   
   let html = `<div class="panel-title" style="color: ${mainWhite}; padding: 18px 24px 12px 24px; text-transform: uppercase; font-weight: bold; font-size: 24px; font-family: Arial, sans-serif; text-align: center; letter-spacing: 1px;">Valve Test Results</div>`;
@@ -348,44 +459,120 @@ function renderValveTestResultsPanel(currentWellId) {
         selectedIdx = 0;
       }
 
-      const allowableRate = (VALVE_LIMITS[valveId] && VALVE_LIMITS[valveId].critical_rate !== undefined) 
-                            ? Number(VALVE_LIMITS[valveId].critical_rate).toFixed(3) : 'N/A';
-      const leakRateDisplay = (currentTestToShow && currentTestToShow.leak_rate_scfm !== undefined) 
-                              ? Number(currentTestToShow.leak_rate_scfm).toFixed(3) : 'N/A';
-      const p1Value = (currentTestToShow && currentTestToShow.thresholds && currentTestToShow.thresholds.P1_psia_actual !== undefined)
-                      ? Number(currentTestToShow.thresholds.P1_psia_actual).toFixed(1)
-                      : (currentTestToShow && currentTestToShow.inputs && currentTestToShow.inputs.InitialPressure_psig !== undefined)
-                        ? (Number(currentTestToShow.inputs.InitialPressure_psig) + 14.7).toFixed(1) : 'N/A';
-      const pcValue = (currentTestToShow && currentTestToShow.thresholds && currentTestToShow.thresholds.Pc_psia_critical_check !== undefined) 
-                      ? Number(currentTestToShow.thresholds.Pc_psia_critical_check).toFixed(1) 
-                      : (currentTestToShow && currentTestToShow.thresholds && currentTestToShow.thresholds.Pc !== undefined) 
-                        ? Number(currentTestToShow.thresholds.Pc).toFixed(1) : 'N/A';
-      const pfValue = (currentTestToShow && currentTestToShow.thresholds && currentTestToShow.thresholds.Pf_psia_allowable !== undefined)
-                      ? Number(currentTestToShow.thresholds.Pf_psia_allowable).toFixed(1)
-                      : (currentTestToShow && currentTestToShow.thresholds && currentTestToShow.thresholds.Pf !== undefined)
-                        ? Number(currentTestToShow.thresholds.Pf).toFixed(1) : 'N/A';
+      // FIX #1: Use the valve's test data directly for the allowable rate.
+      // The `VALVE_LIMITS` lookup was incorrect. The critical rate is on the test object.
+      const allowableRate = (currentTestToShow && currentTestToShow.criticalRate !== undefined) 
+                            ? Number(currentTestToShow.criticalRate).toFixed(3) : 'N/A';
+      
+      // FIX #2: The leak rate is not on the object, it needs to be calculated or retrieved.
+      // For now, let's assume it might be on the test object directly, similar to the console output.
+      // If `leak_rate_scfm` is not a property, you will need to find where it comes from.
+      // Let's assume it's `Pa` for now based on the console screenshot.
+      const leakRateDisplay = (currentTestToShow && currentTestToShow.leakRate !== undefined) 
+                              ? Number(currentTestToShow.leakRate).toFixed(3) : 'N/A';
+
+      // FIX #3: Access P1, Pc, and Pf directly from the test object, not from a nested `thresholds` property.
+      const p1Value = (currentTestToShow && currentTestToShow.Pa !== undefined)
+                      ? Number(currentTestToShow.Pa).toFixed(1) : 'N/A';
+      const pcValue = (currentTestToShow && currentTestToShow.Pc !== undefined) 
+                      ? Number(currentTestToShow.Pc).toFixed(1) : 'N/A';
+      const pfValue = (currentTestToShow && currentTestToShow.Pf !== undefined)
+                      ? Number(currentTestToShow.Pf).toFixed(1) : 'N/A';
 
       let historyDropdownHtml_inner = ''; 
-      let deleteButtonsHtml_inner = ''; 
+      // === New Delete Buttons (Pill-shaped purple "Delete" buttons) ===
+      /* const deleteBtnStyle = `
+          background: #ec4141ff;
+          color: white;
+          border: none;
+          border-radius: 30px;
+          padding: 1px 1px;
+          font-size: 0.7em;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.2s, transform 0.1s;
+          font-weight: 500;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      `;
 
+      const deleteBtnHoverStyle = `
+          background: #b71c1c;
+          transform: translateY(-1px);
+      `;
+
+      const deleteAllBtnStyle = `
+          background: #e09c9cff;
+          color: white;
+          border: none;
+          border-radius: 30px;
+          padding: 1px 1px;
+          font-size: 0.7em;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.2s, transform 0.1s;
+          font-weight: 500;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      `;
+
+      const deleteAllBtnHoverStyle = `
+          background: #b71c1c;
+          transform: translateY(-1px);
+      `;
+
+      let deleteButtonsHtml_inner = '';
       if (Array.isArray(testsHistoryForValve) && testsHistoryForValve.length > 0) {
-        historyDropdownHtml_inner = `<select class="past-tests-dropdown" style="margin-left: 0; margin-top: 5px; font-size: 0.9em; padding: 4px; background-color: #34495e; color: #ecf0f1; border: 1px solid #4a6278; border-radius: 3px;" onchange="handlePastTestSelect('${currentWellId}', '${valveId}', this.value)">`;
-        testsHistoryForValve.forEach((test, index) => {
-          const timestampLabel = formatTestTimestampForDropdown(test);
-          historyDropdownHtml_inner += `<option value="${index}" ${index === selectedIdx ? 'selected' : ''}>${timestampLabel}</option>`;
-        });
-        historyDropdownHtml_inner += `</select>`;
-        deleteButtonsHtml_inner = `<div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
-                <button class="circular-delete-btn" style="width:${deleteButtonSize}; height:${deleteButtonSize}; border-radius:50%; background:transparent; color:${deleteIconColor}; border:1px solid ${deleteIconColor}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease;" onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',${selectedIdx})" title="Delete currently selected test" onmouseover="this.style.background='${deleteAllBgColor}'; this.style.borderColor='${deleteIconHoverColor}'; this.style.color='${deleteIconHoverColor}'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='transparent'; this.style.borderColor='${deleteIconColor}'; this.style.color='${deleteIconColor}'; this.style.transform='scale(1)';">${trashIconSVG}</button>
-                <button class="circular-delete-all-btn" style="width:${deleteButtonSize}; height:${deleteButtonSize}; border-radius:50%; background:${deleteAllBgColor}; color:${deleteIconColor}; border:1px solid ${deleteIconColor}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; position:relative;" onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',null)" title="Delete all ${testsHistoryForValve.length} tests for this valve" onmouseover="this.style.background='${deleteAllHoverBgColor}'; this.style.borderColor='${deleteIconHoverColor}'; this.style.color='${deleteIconHoverColor}'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='${deleteAllBgColor}'; this.style.borderColor='${deleteIconColor}'; this.style.color='${deleteIconColor}'; this.style.transform='scale(1)';"><span style="position:relative; display:flex; align-items:center; justify-content:center;">${trashIconSVG}<span style="position:absolute; top:${deleteBadgeTopRight}; right:${deleteBadgeTopRight}; background:${mainWhite}; color:${deleteIconColor}; border-radius:50%; width:${deleteBadgeSize}; height:${deleteBadgeSize}; font-size:${deleteBadgeFontSize}; font-weight:bold; display:flex; align-items:center; justify-content:center; border:1px solid ${deleteIconColor};">${testsHistoryForValve.length}</span></span></button>
-            </div>`;
+          deleteButtonsHtml_inner = `
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                  <button 
+                      class="delete-test-btn" 
+                      style="${deleteBtnStyle}" 
+                      onmouseover="this.style.cssText += '${deleteBtnHoverStyle}'" 
+                      onmouseout="this.style.cssText = '${deleteBtnStyle}'"
+                      onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',${selectedIdx})"
+                      title="Delete currently selected test">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                      </svg>
+                      Delete
+                  </button>
+                  <button 
+                      class="delete-all-tests-btn" 
+                      style="${deleteAllBtnStyle}"
+                      onmouseover="this.style.cssText += '${deleteAllBtnHoverStyle}'" 
+                      onmouseout="this.style.cssText = '${deleteAllBtnStyle}'"
+                      onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',null)"
+                      title="Delete all ${testsHistoryForValve.length} tests for this valve">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                      </svg>
+                      Delete All
+                  </button>
+              </div>
+          `;
       } else {
-        historyDropdownHtml_inner = (currentTestToShow) ? `<span style="font-size:0.9em; color:#bdc3c7; margin-top: 5px; display: inline-block;">(1 test record)</span>` : `<span style="font-size:0.9em; color:#bdc3c7; margin-top: 5px; display: inline-block;">(No test records)</span>`;
-        if (currentTestToShow) {
-          deleteButtonsHtml_inner = `<div style="margin-top:8px;"><button class="circular-delete-btn" style="width:${deleteButtonSize}; height:${deleteButtonSize}; border-radius:50%; background:transparent; color:${deleteIconColor}; border:1px solid ${deleteIconColor}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease;" onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',null)" title="Delete this test" onmouseover="this.style.background='${deleteAllBgColor}'; this.style.borderColor='${deleteIconHoverColor}'; this.style.color='${deleteIconHoverColor}'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='transparent'; this.style.borderColor='${deleteIconColor}'; this.style.color='${deleteIconColor}'; this.style.transform='scale(1)';">${trashIconSVG}</button></div>`;
-        }
-      }
-
+          if (currentTestToShow) {
+              deleteButtonsHtml_inner = `
+                  <div style="margin-top: 8px;">
+                      <button 
+                          class="delete-test-btn" 
+                          style="${deleteBtnStyle}"
+                          onmouseover="this.style.cssText += '${deleteBtnHoverStyle}'" 
+                          onmouseout="this.style.cssText = '${deleteBtnStyle}'"
+                          onclick="showDeleteTestConfirmation('${currentWellId}','${valveId}',null)"
+                          title="Delete this test">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                          </svg>
+                          Delete
+                      </button>
+                  </div>
+              `;
+          }
+} */
       html += `<div class="valve-entry" style="margin-bottom: 12px; background-color: ${valveEntryCardBackground}; border-radius: 5px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">`;
       html += `  <div class="valve-main-row" style="display: flex; align-items: stretch; min-height: 70px;">`;
       html += `    <div class="left-bar" style="background-color: ${leftBarColorForCard}; padding: 0 15px; display: flex; align-items: center; justify-content: center; cursor: pointer;" onclick="toggleValveTestDetails('${currentWellId}', '${valveId}')">`;
@@ -393,25 +580,25 @@ function renderValveTestResultsPanel(currentWellId) {
       html += `    </div>`;
       html += `    <div class="valve-content-area" style="flex-grow: 1; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center;">`;
       html += `      <div class="valve-info-primary" style="display: flex; flex-direction: column; justify-content: center; padding-right: 10px;">`;
-      html += `        <div style="font-weight: bold; font-size: 1.2em; color: #ecf0f1;">${getValveNameById(valveId)}</div>`;
+      html += `        <div style="font-weight: bold; font-size: 1.2em; color: #060808ff;">${getValveNameById(valveId)}</div>`;
       html += `        ${historyDropdownHtml_inner}`; 
-      html += `        ${deleteButtonsHtml_inner}`;  
+    //  html += `        ${deleteButtonsHtml_inner}`;  
       html += `      </div>`;
-      html += `      <div class="valve-info-secondary" style="text-align: right; color: #bdc3c7; font-size: 0.95em; white-space: nowrap;">`;
-      html += `        <div style="margin-bottom: 6px;"><span style="color: #95a5a6;">Leak Rate:</span> <strong style="font-size: 1.1em; color: #ecf0f1;">${leakRateDisplay}</strong> scfm</div>`;
-      html += `        <div><span style="color: #95a5a6;">Allowable:</span> <strong style="font-size: 1.1em; color: #ecf0f1;">${allowableRate}</strong> scfm</div>`;
+      html += `      <div class="valve-info-secondary" style="text-align: right; color: #ffff; font-size: 0.95em; white-space: nowrap;">`;
+      html += `        <div style="margin-bottom: 6px;"><span style="color: #000000ff;">Leak Rate:</span> <strong style="font-size: 1.1em; color: #050505ff;">${leakRateDisplay}</strong> scfm</div>`;
+      html += `        <div><span style="color: #000000ff;">Allowable:</span> <strong style="font-size: 1.1em; color: #000000ff;">${allowableRate}</strong> scfm</div>`;
       html += `      </div>`;
       html += `    </div>`; 
       html += `  </div>`; 
 
-      html += `  <div id="details-${currentWellId}-${valveId}" class="valve-details-collapsible" style="display:none; padding: 15px 20px; background-color: rgba(0,0,0,0.15); border-top: 1px solid ${valveEntryCardBorder}; color: #bdc3c7; font-size: 0.9em;">`;
+      html += `  <div id="details-${currentWellId}-${valveId}" class="valve-details-collapsible" style="display:none; padding: 15px 20px; background-color: rgba(0,0,0,0.05); border-top: 1px solid ${valveEntryCardBorder}; color: #080808ff; font-size: 0.9em;">`;
       html += `    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">`;
       html += `      <div><strong>Initial Pressure (P1):</strong> ${p1Value} psia</div>`;
       html += `      <div><strong>Critical Check (Pc):</strong> ${pcValue} psia</div>`;
       html += `      <div><strong>Final Allowable (Pf):</strong> ${pfValue} psia</div>`;
       html += `    </div>`;
       if (currentTestToShow && currentTestToShow.inputs) {
-        html += `<div style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;"><strong>Tested by:</strong> ${currentTestToShow.inputs.TestedBy || 'N/A'} <span style="color:#95a5a6;">at ${formatTestTimestampForDropdown(currentTestToShow)}</span></div>`;
+        html += `<div style="margin-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 1); padding-top: 10px;"><strong>Tested by:</strong> ${currentTestToShow.inputs.TestedBy || 'N/A'} <span style="color:#95a5a6;">at ${formatTestTimestampForDropdown(currentTestToShow)}</span></div>`;
       }
       html += `  </div>`;
 
@@ -474,7 +661,7 @@ function renderValveTestResultsPanel(currentWellId) {
   html += `    + Create Deviation for this Well`;
   html += `  </button>`;
 
-  if (currentUser && currentUser.role === 'admin') {
+/*  if (currentUser && currentUser.role === 'admin') {
     html += `  <div class="admin-actions" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.1); border-radius: 4px; text-align:left;">`;
     html += `    <h4 style="margin: 0 0 12px 0; color: ${mainWhite}; opacity:0.9; font-size: 1.1em;">Admin Actions</h4>`;
     html += `    <button class="secondary-btn" onclick="viewDeletedTests('${currentWellId}')" style="margin-right: 10px; font-size:0.9em; padding: 8px 12px; background:rgba(255,255,255,0.2); color:${mainWhite}; border:1px solid rgba(255,255,255,0.3); border-radius:4px;">`;
@@ -484,7 +671,7 @@ function renderValveTestResultsPanel(currentWellId) {
     html += `      📊 Export All Data`;
     html += `    </button>`;
     html += `  </div>`;
-  }
+  } */
   html += `</div>`;
 
   panel.innerHTML = html;
@@ -529,156 +716,6 @@ function renderWellDetailsButton(wellId) {
   }
 }
 
-function renderWellDetailsButton(wellId) {
-  const wellDetailsContainer = document.getElementById('wellDetailsContainer');
-  if (!wellDetailsContainer) return;
-
-  const well = (window.wells || []).find(w => w.id === wellId); 
-  if (!well) {
-    wellDetailsContainer.innerHTML = '';
-    return;
-  }
-  wellDetailsContainer.innerHTML = `
-    <button id="showWellDetailsBtn" class="show-well-details-btn">Well details</button>
-    <div id="wellDetailsBox" class="well-details-box" style="display:none;"></div>`;
-  
-  const showWellDetailsBtn = document.getElementById('showWellDetailsBtn');
-  if(showWellDetailsBtn) {
-      showWellDetailsBtn.onclick = function() {
-        const detailsBox = document.getElementById('wellDetailsBox');
-        if (!detailsBox) return;
-        if (detailsBox.style.display === "block") {
-          detailsBox.style.display = "none";
-          return;
-        }
-        let html = `
-          <h3 style="margin-bottom:8px; color:#18191b;">${well.name}  || ""}</h3>
-          <ul style="color:#18191b;">
-            <li><b>Type:</b> ${well.type || ""}</li>
-            <li><b>Christmas Tree Type:</b> ${well.treeType || ""}</li>
-            ${(well.rings && well.rings.length)
-                ? `<li><b>Integrity/Risk:</b>
-                  <ul style="margin-bottom:0;">
-                    ${well.rings.map(r => `<li style="color:${r.color};"><b>${r.label}:</b> ${r.message}</li>`).join('')}
-                  </ul></li>` : ""}
-          </ul>`;
-        detailsBox.innerHTML = html;
-        detailsBox.style.display = "block";
-      };
-  }
-}
-
-/**
- * Determines the failure category and number from valve test results
- * using the well failure matrix for accurate categorization.
- * 
- * @param {Object} testResult - The valve test result data
- * @returns {Object} An object with category and number properties
- */
-function getFailureCategoryAndNumber(testResult) {
-  if (!testResult) {
-    return { category: null, number: null };
-  }
-
-  // If the test passed, return null values
-  if (testResult.pass === true) {
-    return { category: null, number: null };
-  }
-
-  // Get the current well type from global context
-  const wellName = window.currentWellContext?.name;
-  const well = window.wells.find(w => w.name === wellName);
-  const wellType = well ? getWellTypeKey(well.type) : 'Producer'; // Fallback to Producer
-
-  // Get valve type
-  const valveType = testResult.valve_type || '';
-  const valveId = testResult.valve_id || '';
-  
-  // Extract failure information
-  const failureReasons = testResult.failure_reasons || [];
-  const isLeakRateExceeded = failureReasons.some(reason => 
-    reason.includes('leak rate') || reason.includes('exceed')
-  );
-  
-  // Determine if this is a surface or subsurface valve
-  const isSubsurfaceValve = valveType.toUpperCase() === 'SCSSV';
-  
-  // Check if multiple valves failed (need to determine from global context)
-  const multipleValvesFailed = checkForMultipleFailedValves(wellName);
-
-  // Initialize with null values
-  let category = null;
-  let number = null;
-
-  // Step 1: Determine the category
-  if (isSubsurfaceValve) {
-    category = multipleValvesFailed ? 'multipleSubSurfaceFailures' : 'singleSubSurfaceFailure';
-  } else {
-    category = multipleValvesFailed ? 'multipleSurfaceFailures' : 'singleSurfaceFailure';
-  }
-
-  // Step 2: Find the appropriate failure number by searching through the matrix
-  if (category && window.wellFailureMatrix[category]) {
-    // Get all entries in the selected category
-    const categoryEntries = window.wellFailureMatrix[category];
-    
-    // Find the most appropriate failure description based on valve type
-    for (const [failureNum, failureData] of Object.entries(categoryEntries)) {
-      const description = failureData.description.toLowerCase();
-      const valveTypeUpper = valveType.toUpperCase();
-      
-      // Match based on valve type
-      if (description.includes(valveTypeUpper)) {
-        number = parseInt(failureNum);
-        break;
-      }
-      
-      // For SCSSV and leak rate failures
-      if (isSubsurfaceValve && isLeakRateExceeded && 
-          description.includes('completion leak') && description.includes('above allowable leak rate')) {
-        number = parseInt(failureNum);
-        break;
-      }
-    }
-    
-    // If still not found, use first available number as fallback
-    if (number === null && Object.keys(categoryEntries).length > 0) {
-      number = parseInt(Object.keys(categoryEntries)[0]);
-    }
-  }
-
-  console.log(`Dynamically categorized failure for ${valveType} as ${category}:${number}`, failureReasons);
-  return { category, number };
-}
-
-/**
- * Helper function to check if multiple valves have failed for the well
- * @param {string} wellName - The name of the well to check
- * @returns {boolean} True if multiple valves have failed tests
- */
-function checkForMultipleFailedValves(wellName) {
-  if (!wellName || !window.valveTestResults || !window.valveTestResults[wellName]) {
-    return false;
-  }
-  
-  const wellResults = window.valveTestResults[wellName];
-  let failedValveCount = 0;
-  
-  for (const valveId in wellResults) {
-    if (wellResults.hasOwnProperty(valveId)) {
-      const tests = wellResults[valveId];
-      if (!Array.isArray(tests) || tests.length === 0) continue;
-      
-      // Check most recent test result
-      const latestTest = tests[tests.length - 1];
-      if (latestTest && latestTest.pass === false) {
-        failedValveCount++;
-      }
-    }
-  }
-  
-  return failedValveCount > 1;
-}
 
 window.renderWellsSection = renderWellsSection;
 window.renderWellSchematicAndPanel = renderWellSchematicAndPanel;

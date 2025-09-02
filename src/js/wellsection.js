@@ -114,7 +114,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
   let validBlockingValves = [];
   try {
     // NOTE: This API endpoint also uses the valve NAME.
-    const response = await fetch(`http://10.226.112.40:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
+    const response = await fetch(`http://10.226.112.188:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
     if (response.ok) {
       const data = await response.json();
       
@@ -266,7 +266,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
 
            try {
         // STEP 1: Fetch raw calculated data from the backend
-        const response = await fetch('http://10.226.112.40:5000/api/integrity_test/', {
+        const response = await fetch('http://10.226.112.188:5000/api/integrity_test/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(apiPayload)
@@ -280,10 +280,13 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         
         // ** FIX: The actual result is the FIRST element of the returned array **
         const calculatedResult = apiResponse[0]; 
+
+
+    
         
         console.log("Raw backend result object:", calculatedResult);
         
-        // STEP 2: Validate on the frontend using our function
+      // STEP 2: Validate on the frontend using our function
         const finalValidatedResult = validateTestOnFrontend(calculatedResult, valveLimits);
         
         // STEP 3: Add metadata and store the validated result in memory
@@ -365,7 +368,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
           : (formForReview.elements[f.name]?.value || "");
         out += `<tr>
             <td style="color:#8ec4f7;padding-left:10px;width:40%;">${f.label}</td>
-            <td style="color:#fff;width:60%;">${v || 'N/A'}</td></tr>`;
+            <td style="color:#000;width:60%;">${v || 'N/A'}</td></tr>`;
       });
     });
     out += "</table>";
@@ -406,6 +409,101 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
     renderWarningHistoryDisplay(historyPanelDiv);
   }
   clearWarningHistoryDisplay(document.getElementById(`warningHistoryPanel_${currentWellId}_${currentValveId}`));
+}
+
+function validateTestOnFrontend(result, valveLimits) {
+    // Debug the incoming data
+    console.log("Validating test with data:", result);
+    console.log("Using valve limits:", valveLimits);
+    
+    // Ensure we have all necessary data structures
+    if (!result) {
+        console.error("No result data to validate");
+        return null;
+    }
+    
+    // Make a copy to avoid modifying the original
+    const validatedResult = { ...result };
+    
+    // IMPORTANT: If the backend already provided a 'pass' value, preserve it
+    const backendPassValue = validatedResult.pass;
+    
+    // Initialize validation fields if they don't exist
+    if (typeof validatedResult.pass !== 'boolean') {
+        validatedResult.pass = false;
+    }
+    validatedResult.test_valid = validatedResult.test_valid !== false; // Default to true
+    validatedResult.leak_rate_pass = validatedResult.leak_rate_pass || false;
+    validatedResult.failure_reasons = validatedResult.failure_reasons || [];
+    
+    // Only perform validation if required
+    if (typeof backendPassValue !== 'boolean') {
+        // 1. Validate leak rate with better error handling
+        const leakRate = parseFloat(validatedResult.leak_rate_scfm);
+        const criticalRate = parseFloat(valveLimits.critical_rate);
+        
+        console.log(`Checking leak rate: ${leakRate} <= ${criticalRate}`);
+        
+        if (isNaN(leakRate) || isNaN(criticalRate)) {
+            console.warn("Invalid leak rate or critical rate values:", { leakRate, criticalRate });
+            validatedResult.leak_rate_pass = false;
+        } else {
+            validatedResult.leak_rate_pass = leakRate <= criticalRate;
+            console.log(`Leak rate check result: ${validatedResult.leak_rate_pass}`);
+        }
+        
+        // 2. Validate pressure conditions with better error handling
+        let pressureValid = true;
+        if (!validatedResult.thresholds) {
+            console.warn("Missing thresholds object in test result");
+            pressureValid = false;
+        } else {
+            const { Pa, Pc } = validatedResult.thresholds;
+            console.log(`Checking Pa <= Pc: ${Pa} <= ${Pc}`);
+            
+            if (Pa !== undefined && Pc !== undefined && Pa > Pc) {
+                validatedResult.test_valid = false;
+                pressureValid = false;
+                console.log("Invalid test configuration: Pa > Pc");
+            }
+        }
+        
+        // 3. Set pass/fail flag with better error handling
+        let pass_fail = true;
+        if (!validatedResult.thresholds) {
+            pass_fail = false;
+        } else {
+            const { P2, Pf } = validatedResult.thresholds;
+            console.log(`Checking P2 <= Pf: ${P2} <= ${Pf}`);
+            
+            if (P2 !== undefined && Pf !== undefined && P2 > Pf) {
+                pass_fail = false;
+                console.log("Internal leak failure: P2 > Pf");
+            }
+        }
+        
+        // Final pass calculation
+        validatedResult.pass = validatedResult.test_valid && pass_fail && validatedResult.leak_rate_pass;
+        console.log(`Calculated test result - pass: ${validatedResult.pass}, components: valid=${validatedResult.test_valid}, pass_fail=${pass_fail}, leak_rate_pass=${validatedResult.leak_rate_pass}`);
+    } else {
+        console.log(`Using backend pass value: ${backendPassValue}`);
+    }
+    
+    // If failure reasons array is empty, populate it
+    if (validatedResult.failure_reasons.length === 0 && !validatedResult.pass) {
+        if (!validatedResult.test_valid) {
+            validatedResult.failure_reasons.push("Configuración de prueba inválida (Pa > Pc)");
+        }
+        if (validatedResult.thresholds && validatedResult.thresholds.P2 > validatedResult.thresholds.Pf) {
+            validatedResult.failure_reasons.push("Falla de fuga interna (P2 > Pf)");
+        }
+        if (!validatedResult.leak_rate_pass) {
+            validatedResult.failure_reasons.push("Tasa de fuga excede el máximo permitido (Q_act > critical_rate)");
+        }
+    }
+    
+    console.log("Final validated result:", validatedResult);
+    return validatedResult;
 }
 
 // Function to show SweetAlert temporary messages
@@ -577,7 +675,7 @@ async function exportTestData(wellId) {
 
 async function refreshWellDataFromAPI(wellId = null) {
   try {
-    const response = await fetch('http://10.226.112.40:5000/api/wells/');
+    const response = await fetch('http://10.226.112.188:5000/api/wells/');
     if (!response.ok) {
       return false;
     }
@@ -586,7 +684,7 @@ async function refreshWellDataFromAPI(wellId = null) {
     window.wells = wellsData;
     
     if (wellId) {
-      const testResultsResponse = await fetch(`http://10.226.112.40:5000/api/integrity_test/results?well=${wellId}`);
+      const testResultsResponse = await fetch(`http://10.226.112.188:5000/api/integrity_test/results?well=${wellId}`);
       if (testResultsResponse.ok) {
         // Data refreshed - no need to store in localStorage
       }
@@ -600,57 +698,7 @@ async function refreshWellDataFromAPI(wellId = null) {
 }
 
 
-/**
- * Validates a valve integrity test on the frontend using raw data from the backend.
- * 
- * @param {object} result - The raw calculated values from the backend API
- * @param {object} valveLimits - The valve limits from VALVE_LIMITS
- * @returns {object} The validated result with pass/fail flags
- */
-function validateTestOnFrontend(result, valveLimits) {
-    // Ensure we have all necessary data structures
-    if (!result) return null;
-    
-    // Make a copy to avoid modifying the original
-    const validatedResult = { ...result };
-    
-    // Initialize validation fields if they don't exist
-    validatedResult.pass = false;
-    validatedResult.test_valid = true;
-    validatedResult.leak_rate_pass = false;
-    validatedResult.failure_reasons = [];
-    
-    // 1. Validate leak rate
-    const leakRate = validatedResult.leak_rate_scfm;
-    const criticalRate = valveLimits.critical_rate;
-    validatedResult.leak_rate_pass = leakRate <= criticalRate;
-    
-    // 2. Validate pressure conditions
-    // Check if Pa > Pc (invalid test configuration)
-    if (validatedResult.thresholds && 
-        validatedResult.thresholds.Pa > validatedResult.thresholds.Pc) {
-        validatedResult.test_valid = false;
-    }
-    
-    // 3. Set pass/fail flag
-    // Check if P2 > Pf (internal leak failure)
-    const pass_fail = !(validatedResult.thresholds && 
-                        validatedResult.thresholds.P2 > validatedResult.thresholds.Pf);
-    validatedResult.pass = validatedResult.test_valid && pass_fail && validatedResult.leak_rate_pass;
-    
-    // 4. Populate failure reasons (matching backend logic from Image 2)
-    if (!validatedResult.test_valid) {
-        validatedResult.failure_reasons.push("Configuración de prueba inválida (Pa > Pc)");
-    }
-    if (!pass_fail) {
-        validatedResult.failure_reasons.push("Falla de fuga interna (P2 > Pf)");
-    }
-    if (!validatedResult.leak_rate_pass) {
-        validatedResult.failure_reasons.push("Tasa de fuga excede el máximo permitido (Q_act > critical_rate)");
-    }
-    
-    return validatedResult;
-}
+
 
 /**
  * Finds the short name of a valve (e.g., "MMV") using its unique ID.

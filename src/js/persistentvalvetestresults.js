@@ -21,7 +21,7 @@ async function fetchPersistentValveTestResults() {
             for (const valve of valves) {
                 const valveId = valve.id;
                 // Assuming the backend endpoint to get ALL tests for a valve is this one
-                const url = `http://10.226.14.79:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
+                const url = `http://10.226.113.12:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
                 fetchPromises.push(
                     fetch(url)
                         .then(resp => {

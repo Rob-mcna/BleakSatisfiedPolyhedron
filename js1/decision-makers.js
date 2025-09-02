@@ -103,7 +103,7 @@ async sendEscalationToDatabase(escalation) {
     
     const backendData = this._prepareDataForBackend(escalation);
     
-    const response = await fetch(`http://10.226.112.40:5000/api/integrity_test/failure?${idParameter}&valve=${encodeURIComponent(escalation.valveId)}`, {
+    const response = await fetch(`http://10.226.112.213:5000/api/integrity_test/failure?${idParameter}&valve=${encodeURIComponent(escalation.valveId)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -155,7 +155,7 @@ async updateEscalationInDatabase(escalation) {
     
     console.log(`Updating escalation in database for well ID: ${escalation.wellId}`);
     
-    const response = await fetch(`http://10.226.112.40:5000/api/integrity_test/failure?wellId=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
+    const response = await fetch(`http://10.226.112.213:5000/api/integrity_test/failure?wellId=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'

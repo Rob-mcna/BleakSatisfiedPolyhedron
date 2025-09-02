@@ -1,5 +1,8 @@
+
+
+
 // --- API ENDPOINTS CONFIGURATION ---
-const API_BASE_URL = 'http://10.226.112.40:5000/api'; // Updated API base URL
+const API_BASE_URL = 'http://10.226.112.188:5000/api'; // Updated API base URL
 
 // --- USER AUTHENTICATION & MANAGEMENT ---
 class AuthService {
@@ -22,9 +25,24 @@ class AuthService {
       }
       
       const data = await response.json();
-      console.log(data);
+      console.log("Full login response from API:", data);
       
-   
+      // Extract the token and user information from the response
+      if (data.message === "Login successful" && data.role) {
+        // Handle the API response format from the screenshot
+        this.currentToken = 'some-placeholder-token'; // The API doesn't seem to return a token
+        this.currentUserData = {
+          email: data.user_email || email,
+          role: data.role,
+          id: data.user_id || 'unknown'
+        };
+        
+        console.log('Login successful, user data stored:', this.currentUserData);
+        return this.currentUserData;
+      } else {
+        console.error("API response missing expected data", data);
+        throw new Error("Invalid response from server");
+      }
 
     } catch (error) {
       console.error('Login error:', error);
@@ -57,6 +75,7 @@ class AuthService {
 
   static async getCurrentUser() {
     if (!this.currentToken) return null;
+    if (this.currentUserData) return this.currentUserData; // Return cached data if available
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -73,12 +92,14 @@ class AuthService {
       
       const user = await response.json();
       this.currentUserData = user;
+      console.log('Current user data:', user);
       return user;
     } catch (error) {
       console.error('Get current user error:', error);
       this.logout();
       return null;
     }
+
   }
 
   static logout() {
@@ -97,19 +118,15 @@ class AuthService {
   }
 }
 
-
-
-
-
 // --- ROLE ACCESS CONTROL (Updated) ---
 const sectionRoles = {
-  dashboard: ["admin", "supervisor", "technician"],
-  wells: ["admin", "supervisor", "technician"],
-  data: ["admin", "supervisor"],
-  deviations: ["admin", "supervisor"],
-  reports: ["admin"],
-  users: ["admin"],
-  decisionMakers: ["admin"] // New section for managing decision makers
+  dashboard: ["admin", "supervisor", "operator", "director"],
+  wells: ["admin", "supervisor", "operator", "director"],
+  data: ["admin", "supervisor", "director"],
+  deviations: ["admin", "supervisor", "director"],
+  reports: ["admin", "director"],
+  users: ["admin", "director"],
+  decisionMakers: ["admin", "director"] // New section for managing decision makers
 };
 
 // --- GLOBAL VARIABLES ---
@@ -149,6 +166,7 @@ function showSection(section) {
 
 function updateNavigationAccess() {
   if (!currentUser) return;
+  console.log('Updating navigation access for user:', currentUser.email, 'Role:', currentUser.role);
 
   for (let sec in sectionRoles) {
     const btn = document.querySelector(`nav button[onclick*="showSection('${sec}')"]`);
@@ -209,30 +227,13 @@ function showLogin() {
   document.getElementById('loginError').textContent = '';
 }
 
-async function logout() {
-  try {
-    // Call logout endpoint if available
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AuthService.getToken()}`
-      }
-    });
-  } catch (error) {
-    console.error('Logout API call failed:', error);
-  }
-
-  AuthService.logout();
+function logout() {
+  AuthService.logout(); // Use the service to logout
   currentUser = null;
-  decisionMakers = null;
-  
   document.getElementById('mainMenu').style.display = 'none';
   document.querySelector('main').style.display = 'none';
-  
-  // Clear form fields but don't store anything
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
-  
   showLogin();
 }
 
@@ -240,16 +241,22 @@ async function logout() {
 async function initializeDecisionMakers() {
   try {
     decisionMakers = await DecisionMakersService.getDecisionMakers();
-    
-    // Update lead engineer with current user info if they're a technician/engineer
-    if (currentUser && (currentUser.role === 'technician' || currentUser.title?.toLowerCase().includes('engineer'))) {
-      decisionMakers.leadEngineer.name = currentUser.email;
-      decisionMakers.leadEngineer.email = currentUser.email || `${currentUser.email}@company.com`;
+
+    // Find the decision maker entry that matches the current user's role
+    // and update it with the logged-in user's specific details.
+    if (currentUser && decisionMakers?.decisionMakers) {
+      const userInHierarchy = decisionMakers.decisionMakers.find(dm => dm.role === currentUser.role);
+      if (userInHierarchy) {
+        userInHierarchy.name = currentUser.email; // Or a display name if available
+        userInHierarchy.email = currentUser.email;
+        console.log(`Mapped logged-in user ${currentUser.email} to decision maker role '${currentUser.role}'`);
+      }
     }
-    
+
     return decisionMakers;
   } catch (error) {
     console.error('Failed to initialize decision makers:', error);
+    // Fallback to default if the service fails
     decisionMakers = DecisionMakersService.getDefaultDecisionMakers();
     return decisionMakers;
   }
@@ -286,8 +293,6 @@ function canUserApprove(deviation, user) {
 
 // --- MAIN INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
-  // No stored session checking since we don't store anything locally
-  // Always show login on page load
   showLogin();
   setupEventHandlers();
 });
@@ -313,7 +318,11 @@ function setupEventHandlers() {
     const password = document.getElementById('loginPass').value.trim();
     try {
       currentUser = await AuthService.login(email, password);
-      await initializeApp();
+      if (currentUser) {
+        await initializeApp();
+      } else {
+        document.getElementById('loginError').textContent = 'Login failed: No user data received.';
+      }
     } catch (error) {
       document.getElementById('loginError').textContent = 'Invalid email or password.';
     }
@@ -399,7 +408,7 @@ function setupModalHandlers() {
 
 // --- EXPORT FOR USE IN OTHER MODULES ---
 window.AuthService = AuthService;
-window.currentUser = () => currentUser;
+window.currentUser = () => AuthService.currentUserData;  // Changed from variable to function that returns the current user
 window.decisionMakers = () => decisionMakers;
 window.canUserApprove = canUserApprove;
 window.getEscalationPath = getEscalationPath;
