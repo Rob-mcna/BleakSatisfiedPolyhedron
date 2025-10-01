@@ -29,12 +29,22 @@ const valveFormSections = [
     fields: [
       { name: "finalPressure", label: "Final Pressure (psig)", type: "number" },
       { name: "finalTemperature", label: "Final Temperature (°F)", type: "number" },
-      { name: "downstreamBlockingValve", label: "Downstream Blocking Valve", type: "select", options: [] } // populated dynamically
-      
+      { name: "downstreamBlockingValve", label: "Downstream Blocking Valve", type: "select", options: [] }, // populated dynamically
+      { name: "valveInternalLeak", label: "Valve Internal Leak Status", type: "select", options: ["Tight", "Leaking", "N/A"] },
+      { name: "functionTestingResults", label: "Function Testing Results", type: "select", options: ["Easy", "Tight", "Frozen"] },
+      { name: "stemBearingsGreased", label: "Stem Bearings Greased", type: "radio", options: ["Yes", "No"] }
     ]
-  }
+  },
   
-  
+  {
+    title: "External Factors & Timing",
+    fields: [
+      { name: "externalLeak", label: "External Leak", type: "radio", options: ["Yes", "No"] },
+      { name: "closingTime", label: "Closing Time (secs)", type: "number" },
+      { name: "asclLeak", label: "Control Line & Actuator Seals Leak", type: "radio", options: ["Yes", "No"] },
+      { name: "closedStemLength", label: "Closed Stem Length (in)", type: "number" }
+    ]
+  },
   // --- New Section: Valve Integrity Test Table (from image/table) ---
  
 ];
@@ -88,7 +98,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
   let validBlockingValves = [];
   try {
     // NOTE: This API endpoint also uses the valve NAME.
-    const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
+    const response = await fetch(`http://10.226.113.169:5000/api/integrity_test/blocking_valve?well=${currentWellId}&valve=${currentValveId}`);
     if (response.ok) {
       const data = await response.json();
       
@@ -230,8 +240,6 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         k: Number(submittedFormData.get('k')) || 1.3,
         TestedBy: 'Rob-mcna'
       };
-
-      console.log("Submitting test with data:", apiPayload);
    
 
       const submitMsgEl = document.getElementById(`submitMsg_${currentWellId}_${currentValveId}`);
@@ -242,7 +250,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
 
            try {
         // STEP 1: Fetch raw calculated data from the backend
-        const response = await fetch('http://10.226.113.28:5000/api/integrity_test/', {
+        const response = await fetch('http://10.226.113.169:5000/api/integrity_test/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(apiPayload)
@@ -253,11 +261,9 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         }
         
         const apiResponse = await response.json();
-
-       
         
         // ** FIX: The actual result is the FIRST element of the returned array **
-        const calculatedResult = apiResponse; 
+        const calculatedResult = apiResponse[0]; 
 
 
     
@@ -266,8 +272,6 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         
       // STEP 2: Validate on the frontend using our function
         const finalValidatedResult = validateTestOnFrontend(calculatedResult, valveLimits);
-
-        
         
         // STEP 3: Add metadata and store the validated result in memory
         if (!window.valveTestResults[currentWellId]) {
@@ -276,7 +280,7 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
         if (!Array.isArray(window.valveTestResults[currentWellId][currentValveId])) {
             window.valveTestResults[currentWellId][currentValveId] = [];
         }
-
+        
         finalValidatedResult.utc_timestamp = new Date().toISOString();
         // The 'inputs' object is already on the result, so we just add to it
         finalValidatedResult.inputs.TestedBy = 'Rob-mcna';
@@ -304,16 +308,9 @@ async function showValveInputPanel(currentWellId, currentValveId, valveName) {
                 addMessageToWarningHistoryDisplay(localWarningHistoryPanel, reason)
             );
         }
-
-        // PLACE THE await Promise.all HERE
-            await Promise.all([
-              renderValveTestResultsPanel(currentWellId),
-              renderWellSchematicAndPanel(currentWellId),
-              updateDashboardAfterTest(currentWellId)
-            ]);
-            console.log('valveTestResults before rendering:', JSON.parse(JSON.stringify(window.valveTestResults)));
+        
         // This will trigger the re-render of the results panel and schematic
-      
+        updateDashboardAfterTest(currentWellId);
           
       } catch (error) {
           console.error(`Client-side error for ${currentValveId} on well ${currentWellId}:`, error);
@@ -411,13 +408,13 @@ function validateTestOnFrontend(result, valveLimits) {
 
   if (!result) {
     console.error("No result data to validate");
-    return { pass: false, test_valid: false, leak_rate_pass: false, failure_reasons: ["No result data"], status: "fail" };
+    return { pass: false, test_valid: false, leak_rate_pass: false, failure_reasons: ["No result data"] };
   }
 
   const validatedResult = { ...result };
 
   // Initialize default values
-  validatedResult.pass = validatedResult.pass ?? (validatedResult.status === "pass");
+  validatedResult.pass = validatedResult.pass ?? false;
   validatedResult.test_valid = validatedResult.test_valid ?? true;
   validatedResult.leak_rate_pass = validatedResult.leak_rate_pass ?? false;
   validatedResult.failure_reasons = validatedResult.failure_reasons || [];
@@ -425,12 +422,12 @@ function validateTestOnFrontend(result, valveLimits) {
   validatedResult.thresholds = validatedResult.thresholds || {};
 
   // Map nested properties to top-level expected names
-  validatedResult.leakRate = parseFloat(validatedResult.leak_rate_scfm ?? validatedResult.leakRate ?? 0);
-  validatedResult.criticalRate = parseFloat(validatedResult.limits?.critical_rate_scfm ?? validatedResult.criticalRate ?? valveLimits.critical_rate ?? 0);
-  validatedResult.Pa = parseFloat(validatedResult.thresholds?.Pa ?? validatedResult.Pa ?? 0);
-  validatedResult.Pc = parseFloat(validatedResult.thresholds?.Pc ?? validatedResult.Pc ?? 0);
-  validatedResult.Pf = parseFloat(validatedResult.thresholds?.Pf ?? validatedResult.Pf ?? 0);
-  validatedResult.P2 = parseFloat(validatedResult.thresholds?.P2 ?? validatedResult.P2 ?? 0);
+  validatedResult.leakRate = parseFloat(validatedResult.leak_rate_scfm ?? 0);
+  validatedResult.criticalRate = parseFloat(validatedResult.limits?.critical_rate_scfm ?? valveLimits.critical_rate ?? 0);
+  validatedResult.Pa = parseFloat(validatedResult.thresholds?.Pa ?? 0);
+  validatedResult.Pc = parseFloat(validatedResult.thresholds?.Pc ?? 0);
+  validatedResult.Pf = parseFloat(validatedResult.thresholds?.Pf ?? 0);
+  validatedResult.P2 = parseFloat(validatedResult.thresholds?.P2 ?? 0);
 
   // Validate leak rate
   if (isNaN(validatedResult.leakRate) || isNaN(validatedResult.criticalRate)) {
@@ -468,24 +465,18 @@ function validateTestOnFrontend(result, valveLimits) {
     validatedResult.failure_reasons.push("Internal leak failure: P2 > Pf");
   }
 
-  // Final pass calculation (only if pass was not provided or derived from status)
+  // Final pass calculation (only if backend didn't provide a pass value)
   if (typeof validatedResult.pass !== 'boolean') {
     validatedResult.pass = validatedResult.test_valid && pass_fail && validatedResult.leak_rate_pass;
   }
 
-  const testPassed = validatedResult.test_valid && 
-                      pass_fail && 
-                      validatedResult.leak_rate_pass;
-    
-    validatedResult.pass = testPassed;
-    validatedResult.status = testPassed ? "pass" : "fail";
-    
-    console.log(`Test validation result: pass=${testPassed}, status=${validatedResult.status}`, validatedResult);
-    
-    return validatedResult;
+  // Preserve original nested structure and add mapped properties
+  validatedResult.thresholds = result.thresholds || {};
+  validatedResult.limits = result.limits || {};
+
+  console.log("Final validated result:", validatedResult);
+  return validatedResult;
 }
-
-
 // Function to show SweetAlert temporary messages
 // Function to show SweetAlert temporary messages
 function showTemporaryMessage(message, type) {
@@ -655,7 +646,7 @@ async function exportTestData(wellId) {
 
 async function refreshWellDataFromAPI(wellId = null) {
   try {
-    const response = await fetch('http://10.226.113.28:5000/api/wells/');
+    const response = await fetch('http://10.226.113.169:5000/api/wells/');
     if (!response.ok) {
       return false;
     }
@@ -664,7 +655,7 @@ async function refreshWellDataFromAPI(wellId = null) {
     window.wells = wellsData;
     
     if (wellId) {
-      const testResultsResponse = await fetch(`http://10.226.113.28:5000/api/integrity_test/results?well=${wellId}`);
+      const testResultsResponse = await fetch(`http://10.226.113.169:5000/api/integrity_test/results?well=${wellId}`);
       if (testResultsResponse.ok) {
         // Data refreshed - no need to store in localStorage
       }

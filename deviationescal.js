@@ -14,7 +14,7 @@ window.deviationIdCounter = window.deviationIdCounter || 1;
 class DeviationSystem {
   constructor() {
     this.deviations = window.activeDeviations;
-    this.baseUrl = 'http://10.226.113.168:5000/api';
+    this.baseUrl = 'http://10.226.112.28:5000/api';
   }
 
   // Send deviation as a status update to the same failure record

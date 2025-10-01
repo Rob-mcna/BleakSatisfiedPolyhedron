@@ -17,6 +17,7 @@
  
 </head>
 <body>
+
   <!-- Login/Signup Overlay -->
   <div id="loginOverlay" class="login-overlay">
     <div class="login-overlay-title">Welcome to the Well Integrity Management Tool</div>
@@ -76,7 +77,7 @@
 <section id="dashboardSection">
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <h1>Asset Wells Integrity Status</h1>
-    <button id="showKPIDashboardBtn" class="secondary-btn">KPIs & Actions</button>
+    
   </div>
   <div class="dashboard-filters">
     <select id="filterCountry"><option value="">All Countries</option><option>Country A</option><option>Country B</option><option>Country C</option></select>
@@ -104,16 +105,7 @@
   <!-- 6-Ring Well Dashboard -->
   <div class="well-multiring-board" id="wellMultiRingBoard"></div>
   
-  <!-- KPI/Action Dashboard Panel -->
-  <div id="kpiDashboardPanel" class="kpi-panel">
-    <h2>KPIs & Upcoming Actions</h2>
-    <ul class="kpi-action-list">
-      <li><b>Next Well Integrity Test:</b> Well-2 - 2025-05-22</li>
-      <li><b>Repairs to be Completed:</b> Well-1 (Valve), Well-5 (Sensor)</li>
-      <li><b>Dispensation Next to Expire:</b> Well-4 - 2025-06-01</li>
-    </ul>
-    <button id="closeKPIDashboardBtn" class="secondary-btn">Close</button>
-  </div>
+  
 </section>
     
     <!-- Wells -->
@@ -283,167 +275,10 @@
       <h1>Users</h1>
       <div id="usersUI"></div>
     </section>
-  </main>
 
-<div id="valveWizardModal" class="valve-wizard-overlay">
-  <div class="valve-wizard-content" id="valveWizardContent">
-    <div class="valve-wizard-header">
-      <span id="valveWizardTitle">Valve Test Input</span>
-      <button class="valve-wizard-close" onclick="closeValveWizard()">&times;</button>
-    </div>
-    <form id="valveWizardForm" autocomplete="off" onsubmit="submitValveWizard(event)">
-      <div class="wizard-progress-bar" id="wizardWizardProgress"></div>
-      <div class="error-msg" id="wizardWizardError"></div>
-      
-      <!-- Step 1: Valve Identification -->
-      <div class="wizard-step" data-step="1">
-        <div class="step-title">Valve Identification</div>
-        <label>Valve ID
-          <input type="text" id="wizValveId" name="valveId" value="HWV" readonly>
-        </label>
-        <label>Valve Type
-          <input type="text" id="wizValveType" name="valveType" value="Hydraulic Wing Valve" readonly>
-        </label>
-      </div>
-      <!-- Step 2: Initial Testing Conditions -->
-      <div class="wizard-step" data-step="2">
-        <div class="step-title">Initial Testing Conditions</div>
-        <label>Monitoring Time (min)
-          <input type="number" min="0" id="wizMonitoringTime" name="monitoringTime" required>
-        </label>
-        <label>Maximum Internal Leak Rate (scf/min)
-          <input type="number" min="0" step="0.01" id="wizMaxInternalLeakRate" name="maxInternalLeakRate" required>
-        </label>
-        <label>Initial Pressure (psig)
-          <input type="number" min="0" id="wizInitialPressure" name="initialPressure" required>
-        </label>
-        <label>Initial Temperature (°F)
-          <input type="number" id="wizInitialTemp" name="initialTemp" required>
-        </label>
-      </div>
-      <!-- Step 3: Valve Positions During Testing -->
-      <div class="wizard-step" data-step="3">
-        <div class="step-title">Valve Positions During Testing</div>
-        <label>SCSSV
-          <select id="wizVp_SCSSV" name="vp_SCSSV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-       
-          </select>
-        </label>
-        <label>MMV
-          <select id="wizVp_MMV" name="vp_MMV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-      
-          </select>
-        </label>
-        <label>HMV
-          <select id="wizVp_HMV" name="vp_HMV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-        
-          </select>
-        </label>
-        <label>SV
-          <select id="wizVp_SV" name="vp_SV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-          
-          </select>
-        </label>
-        <label>2SV
-          <select id="wizVp_2SV" name="vp_2SV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-          
-          </select>
-        </label>
-        <label>TC
-          <select id="wizVp_TC" name="vp_TC" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-         
-          </select>
-        </label>
-        <label>MWV
-          <select id="wizVp_MWV" name="vp_MWV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-         
-          </select>
-        </label>
-        <label>HWV
-          <select id="wizVp_HWV" name="vp_HWV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-         
-          </select>
-        </label>
-        <label>CV
-          <select id="wizVp_CV" name="vp_CV" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-            
-          </select>
-        </label>
-        <label>HDVs
-          <select id="wizVp_HDVs" name="vp_HDVs" required>
-            <option value="">Select</option>
-            <option value="O">Open</option>
-            <option value="C">Closed</option>
-         
-          </select>
-        </label>
-      </div>
-      <!-- Step 4: External Factors & Timing -->
-      <div class="wizard-step" data-step="4">
-        <div class="step-title">External Factors & Timing</div>
-        <label>External Leak
-          <div class="radio-group">
-            <label><input type="radio" name="externalLeak" value="Yes" required> Yes</label>
-            <label><input type="radio" name="externalLeak" value="No" required> No</label>
-          </div>
-        </label>
-        <label>Closing Time (secs)
-          <input type="number" min="0" id="wizClosingTime" name="closingTime" required>
-        </label>
-        <label>Control Line & Actuator Seals Leak
-          <div class="radio-group">
-            <label><input type="radio" name="asclLeak" value="Yes" required> Yes</label>
-            <label><input type="radio" name="asclLeak" value="No" required> No</label>
-          </div>
-        </label>
-        <label>Closed Stem Length (in)
-          <input type="number" min="0" step="0.01" id="wizClosedStemLength" name="closedStemLength" required>
-        </label>
-      </div>
-      <!-- Step 5: Review & Submit -->
-      <div class="wizard-step" data-step="5">
-        <div class="step-title">Review & Submit</div>
-        <table class="review-table" id="wizardReviewTable"></table>
-        <div style="color: #444; font-size: 0.95em; margin-bottom: 8px;">
-          Please review all your answers before submitting.
-        </div>
-      </div>
-      <div class="wizard-buttons">
-        <button type="button" id="wizardBackBtn" class="secondary" onclick="valveWizardBack()">Back</button>
-        <button type="button" id="wizardNextBtn" onclick="valveWizardNext()">Next</button>
-        <button type="submit" id="wizardSubmitBtn" style="display:none;">Submit</button>
-      </div>
-    </form>
-  </div>
-</div>
-  
+
+
+  </main>
 
 
 
@@ -463,11 +298,33 @@
   <script src="src/js/wellsection.js"></script>
   <script src="src/js/render_functions.js"></script>
   <script src="src/js/persistentvalvetestresults.js"></script>
-  
+  <script src="src/js/safety_system.js"></script>
+  <script src="src/js/failures.js"></script>
+  <script src="src/js/failures2.js"></script>
   <script src="src/js/delete_tests.js"></script>
+  
   <script src="src/js/modals.js"></script>
   <script src="src/js/notification-panel.js"></script>
 
+
+  <!-- ✅ Place the script here -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const panel = document.getElementById("valveFailureDetailsPanel");
+      const toggleBtn = panel?.querySelector(".toggle-btn");
+
+      if (!panel || !toggleBtn) return;
+
+      // Start collapsed by default
+      panel.classList.add("collapsed");
+      toggleBtn.textContent = "+";
+
+      toggleBtn.addEventListener("click", function () {
+        const isNowCollapsed = panel.classList.toggle("collapsed");
+        this.textContent = isNowCollapsed ? "+" : "−";
+      });
+    });
+  </script>
   
 </body>
 </html>

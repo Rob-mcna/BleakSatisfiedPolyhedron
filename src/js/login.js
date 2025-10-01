@@ -2,7 +2,7 @@
 
 
 // --- API ENDPOINTS CONFIGURATION ---
-const API_BASE_URL = 'http://10.226.112.188:5000/api'; // Updated API base URL
+const API_BASE_URL = 'http://10.226.113.28:5000/api'; // Updated API base URL
 
 // --- USER AUTHENTICATION & MANAGEMENT ---
 class AuthService {
@@ -124,7 +124,7 @@ const sectionRoles = {
   wells: ["admin", "supervisor", "operator", "director"],
   data: ["admin", "supervisor", "director"],
   deviations: ["admin", "supervisor", "director"],
-  reports: ["admin", "director"],
+  reports: ["admin", "supervisor"],
   users: ["admin", "director"],
   decisionMakers: ["admin", "director"] // New section for managing decision makers
 };

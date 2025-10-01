@@ -270,7 +270,7 @@ async function fetchValveTestResults() {
                 ? well.christmasTree.valves : [];
             for (const valve of valves) {
                 const valveId = valve.id;
-                const url = `http://10.226.113.28:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
+                const url = `http://10.226.112.188:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
                 fetchPromises.push(
                     fetch(url)
                         .then(resp => {
@@ -357,7 +357,7 @@ async function fetchWellsAndInitialize() {
     try {
         showTemporaryMessage('Loading wells data...', 'info');
 
-        const response = await fetch('http://10.226.113.28:5000/api/wells');
+        const response = await fetch('http://10.226.112.188:5000/api/wells');
         if (!response.ok) {
             console.error("Failed to fetch wells data:", response.status, await response.text());
             showTemporaryMessage('Failed to load wells data', 'warning');
@@ -365,7 +365,6 @@ async function fetchWellsAndInitialize() {
             return;
         }
         const wellsDataFromServer = await response.json();
-        console.log('Fetched wells data:', wellsDataFromServer);
 
         window.wells = wellsDataFromServer;
 
@@ -557,7 +556,7 @@ function updateDashboardKPIs(wellsForKPIs) {
 function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
-  fetch('http://10.226.113.28:5000/api/wells/')
+  fetch('http://10.226.112.188:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -573,7 +572,7 @@ function fetchWellsAndSyncResultsWithFilter() {
       
       console.log(`Dashboard: Fetched and deduplicated wells - ${wells.length} unique wells found`);
       
-      return fetch('http://10.226.113.28:5000/api/valves/')
+      return fetch('http://10.226.112.188:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
@@ -624,7 +623,7 @@ function fetchWellsAndSyncResultsWithFilter() {
 function runIntegrityTestAndRefreshDashboard(testData) {
   console.log('Dashboard: Submitting integrity test...');
 
-  fetch('http://10.226.113.28:5000/api/run_integrity_test', {
+  fetch('http://10.226.112.188:5000/api/run_integrity_test', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(testData)
@@ -793,7 +792,7 @@ function showTooltipBox(x, y, html, ringInfo = null, wellName = null) {
     });
     
     t.addEventListener('mouseleave', function() {
-      startTooltipHideTimeout();
+      hideTooltip();
     });
   }
   
@@ -823,27 +822,6 @@ function showTooltipBox(x, y, html, ringInfo = null, wellName = null) {
   }
 }
 
-// Helper to start the hide timeout (shared for well and tooltip mouseleave)
-function startTooltipHideTimeout() {
-  let t = document.getElementById('dashboardTooltip');
-  if (!t) return;
-  if (hideTimeout) clearTimeout(hideTimeout);
-
-  const delay = t.getAttribute('data-matrix-info') === 'true' ? 800 : 0; // 0.8s or instant, adjust as needed
-  hideTimeout = setTimeout(() => {
-    if (t && !t.matches(':hover')) { // Don't hide if mouse is over tooltip
-      t.style.opacity = '0';
-      setTimeout(() => {
-        if (t) t.style.display = 'none';
-      }, 200);
-    }
-  }, delay);
-}
-
-
-
-// And make sure you clear the timeout on onmousemove/onmouseenter:
-
 // Modified hideTooltip function with longer delay for matrix info
 function hideTooltip() {
   let t = document.getElementById('dashboardTooltip');
@@ -862,7 +840,7 @@ function hideTooltip() {
             if (t) t.style.display = 'none';
           }, 200);
         }
-      }, 8000);
+      }, 1000);
     } else {
       // Immediate hide for non-matrix tooltips
       t.style.opacity = '0';
@@ -1220,67 +1198,21 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
       window.currentDashboardWell = well;
       handleWellHover(e, well, div, displayRings.slice(0, validRadii.length));
     };
-   
-    // Attach this to the well/ring element's onmouseleave:
-    div.onmouseleave = startTooltipHideTimeout;
-    div.onmouseenter = function() {
-      if (hideTimeout) clearTimeout(hideTimeout);
-      hideTimeout = null;
-};
+    div.onmouseleave = hideTooltip;
 
-  div.onclick = () => {
-  console.log(`Dashboard: Well clicked: ${well.name}`);
-  
-  if (typeof showSection === "function") {
-    // First show the wells section
-    showSection('wells');
-    
-    // Wait longer and try multiple approaches to select the well
-    setTimeout(() => {
-      const wellDropdown = document.getElementById('wellDropdown');
-      console.log(`Attempting to select well ${well.name} in dropdown`);
-      
-      if (wellDropdown) {
-        // Try to find the exact option
-        const option = Array.from(wellDropdown.options).find(opt => 
-          opt.value === well.name || opt.textContent.trim() === well.name
-        );
-        
-        if (option) {
-          console.log(`Found option for ${well.name}, selecting...`);
-          wellDropdown.value = option.value;
-          
-          // Trigger multiple events to ensure it's detected
-          wellDropdown.dispatchEvent(new Event('change', { bubbles: true }));
-          wellDropdown.dispatchEvent(new Event('input', { bubbles: true }));
-          
-          // If there's a custom handler function, call it directly
-          if (typeof onWellSelectionChange === "function") {
-            onWellSelectionChange(well.name);
+    div.onclick = () => {
+      if (typeof showSection === "function") {
+        showSection('wells');
+        setTimeout(() => {
+          const wellDropdown = document.getElementById('wellDropdown');
+          if (wellDropdown) {
+            wellDropdown.value = well.name;
+            wellDropdown.dispatchEvent(new Event('change', { bubbles: true }));
           }
-          
-          console.log(`Successfully selected well: ${well.name}`);
-        } else {
-          console.warn(`Option not found for well: ${well.name}`);
-          console.log('Available options:', Array.from(wellDropdown.options).map(opt => opt.value));
-        }
-      } else {
-        console.error('Well dropdown not found');
+        }, 100);
       }
-      
-      // Also try to trigger any well detail display functions
-      if (typeof displayWellDetails === "function") {
-        displayWellDetails(well.name);
-      }
-      if (typeof renderWellDetail === "function") {
-        renderWellDetail(well.name);
-      }
-      
-    }, 50); // Increased timeout to ensure wells section is fully loaded
-  } else {
-    console.error('showSection function not available');
-  }
-};
+    };
+    
     container.appendChild(div);
     
     // Add indicators if those functions exist
@@ -1293,14 +1225,6 @@ function renderFilteredDashboard(filterOption = 'with-failures') {
   });
 
   console.log(`Dashboard: Rendered ${renderedWells.size} unique wells with filter: ${filterOption}`);
-    // Add safety system legend if in safety system mode
-  if (filterOption === 'safety-system') {
-    addSafetySystemLegend();
-  } else {
-    removeSafetySystemLegend();
-  }
-
-
 }
 
 // Function to update KPIs based on filtered wells
@@ -1343,14 +1267,53 @@ function updateFilteredKPIs(filterOption) {
   }
 }
 // Add this function to create a legend for the dashboard
-
+function addDashboardIndicatorLegend() {
+  // Check if legend already exists
+  if (document.getElementById('dashboardIndicatorLegend')) return;
+  
+  // Find the dashboard container
+  const dashboardContainer = document.getElementById('wellMultiRingBoard');
+  if (!dashboardContainer) return;
+  
+  // Create legend container
+  const legend = document.createElement('div');
+  legend.id = 'dashboardIndicatorLegend';
+  legend.style.cssText = `
+    margin: 10px 0 15px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  `;
+  
+  // Legend content
+  legend.innerHTML = `
+    <div style="font-weight: bold; margin-right: 5px;">Indicator Legend:</div>
+    
+    
+  `;
+  
+  // Add legend to dashboard
+  const filterContainer = document.getElementById('dashboardFilterContainer');
+  if (filterContainer) {
+    filterContainer.insertAdjacentElement('afterend', legend);
+  } else {
+    dashboardContainer.insertAdjacentElement('beforebegin', legend);
+  }
+}
 
 // Modified main render function to use the new filtering system
 function renderMultiRingDashboardWithFilter() {
   // Create dropdown if it doesn't exist
   createDashboardFilterDropdown();
   addEscalationManagementButton();
-
+  addDashboardIndicatorLegend(); // Add this line to show the legend
   
   // Get current filter value or default to 'with-failures'
   const filterSelect = document.getElementById('dashboardFilter');
@@ -1367,7 +1330,7 @@ function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
   // Keep all the existing fetch logic from fetchWellsAndSyncResults
-  fetch('http://10.226.113.28:5000/api/wells/')
+  fetch('http://10.226.112.188:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1377,7 +1340,7 @@ function fetchWellsAndSyncResultsWithFilter() {
     .then(wellsData => {
       const processedWellsData = wellsData || [];
       
-      return fetch('http://10.226.113.28:5000/api/valves/')
+      return fetch('http://10.226.112.188:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);

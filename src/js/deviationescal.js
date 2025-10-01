@@ -89,7 +89,7 @@ class DeviationSystem {
     };
     
 
-    const response = await fetch(`http://10.226.113.12:5000/api/integrity_test/action?id=${encodeURIComponent(deviation.escalationId)}`, {
+    const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/action?id=${encodeURIComponent(deviation.escalationId)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ class DeviationSystem {
     
 
 
-    const resp = await fetch(`http://10.226.113.12:5000/api/integrity_test/action/${encodeURIComponent(deviation.dbId)}`, {
+    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/action/${encodeURIComponent(deviation.dbId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(payload)
@@ -149,7 +149,7 @@ class DeviationSystem {
 
 async fetchDeviationsForEscalationFromDatabase(failureId) {
   try {
-    const resp = await fetch(`http://10.226.113.12:5000/api/integrity_test/action?failure_id=${encodeURIComponent(failureId)}`, {
+    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/action?failure_id=${encodeURIComponent(failureId)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });
@@ -350,6 +350,11 @@ async fetchDeviationsForEscalationFromDatabase(failureId) {
 }
 
 
+// Replacement for the dispensation request form modal in DeviationSystem
+// This version matches the structure and fields shown in ![image1](image1)
+
+// This version includes color bands and section backgrounds matching image 1
+
 async showDeviationRequestForm(failureId) {
   const failure = await this.fetchFailureById(failureId);
   if (!failure) {
@@ -371,74 +376,171 @@ async showDeviationRequestForm(failureId) {
 
   const modal = document.createElement('div');
   modal.style.cssText = `
-    background: #ffffff; color: #333; border-radius: 8px; padding: 24px;
-    width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+    background: #ffffff; color: #222; border-radius: 8px; padding: 0;
+    width: 95%; max-width: 750px; max-height: 95vh; overflow-y: auto;
     position: relative; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-    border-top: 5px solid #ff9800;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    border: 2px solid #000000ff;
   `;
 
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const minExpiryDate = tomorrow.toISOString().split('T')[0];
-  const defaultExpiry = new Date(); defaultExpiry.setDate(defaultExpiry.getDate() + 30);
-  const defaultExpiryDate = defaultExpiry.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const userEmail = window.AuthService.currentUserData?.email || '';
+  const closeModal = () => backdrop.remove();
 
   modal.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-      <h3 style="margin: 0; font-size: 1.5em;">Create Dispensation Request</h3>
-      <button id="closeDeviationModal" title="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
+    <div style="background:#e3f2fd; border-bottom:2px solid #000000ff; padding:18px 0 8px 0; text-align:center;">
+      <h2 style="margin:0; font-size:1.45em;">DISPENSATION REQUEST FORM</h2>
     </div>
-
-    <div style="margin-bottom: 15px; background: #f8f9fa; padding: 12px; border-radius: 4px; border-left: 4px solid #007bff;">
-      <p style="margin: 0; font-size: 0.9em;">For <strong>Well ID: ${failure.wellId}</strong>, Valve <strong>${failure.valveId}</strong></p>
-      <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;"><strong>Failure ID:</strong> ${failure.id}</p>
+    
+    <form id="dispensationForm" autocomplete="off" style="padding:0 24px 24px 24px;">
+    
+     <div style="border: 1px solid #000000ff; border-radius: 0px; background: #f9f9f9; padding: 18px 16px; margin-bottom: 18px; margin-top:18px;">
+      <table style="width:100%; border-collapse:collapse; margin-top:18px;">
+        <tr>
+          <td style="width:30%;"><label>Installation:<br><input type="text" id="installation" style="width:97%;"></label></td>
+          <td style="width:25%;"><label>Field:<br><input type="text" id="field" style="width:97%;"></label></td>
+          <td style="width:30%;"><label>Well Number:<br><input type="text" id="wellNumber" value="${failure.wellId||''}" style="width:97%;"></label></td>
+        </tr>
+        <tr>
+          <td colspan="3"><label>Dispensation Title:<br><input type="text" id="dispensationTitle" style="width:99%;"></label></td>
+        </tr>
+        <tr>
+          <td><label>Date and Place:<br><input type="date" id="datePlace" value="${today}" style="width:77%;"></label></td>
+          <td><label>Dispensation Reference #:<br><input type="text" id="referenceNumber" style="width:90%;"></label></td>
+          <td><label>Dispensation Request Form:<br><input type="text" id="requestFormNumber" style="width:90%;"></label></td>
+        </tr>
+      </table>
     </div>
-
-    <div style="display: flex; flex-direction: column; gap: 15px;">
-      <div>
-        <label for="deviationDescription" style="display: block; margin-bottom: 5px; font-weight: bold;">Description:</label>
-        <textarea id="deviationDescription" placeholder="Describe the dispensation needed..."
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 100px; resize: vertical;"></textarea>
+      <div style="margin-top:18px; border: 1px solid #000000ff; background: #ffffff;">
+        <div style="background:#bbdefb; border-bottom: 1px solid #2196f3; padding:6px 10px; font-weight:bold; text-align:center;">
+          Dispensation Description
+        </div>
+        <div style="padding:12px;">
+          <label>Reasons for Dispensation Request:<br>
+            <textarea id="reason" style="width:97%; min-height:60px; margin-bottom:8px; background:#fff;"></textarea>
+          </label>
+        </div>
+        <div style="padding:12px;">
+          <label>Impact of Deviation from Standards:<br>
+            <textarea id="impact" style="width:97%; min-height:60px; margin-bottom:8px; background:#fff;"></textarea>
+          </label>
+        </div>
+        <div style="padding:12px;">
+          <label>Proposed Action Plan:<br>
+            <textarea id="actionPlan" style="width:97%; min-height:60px; margin-bottom:8px; background:#fff;"></textarea>
+          </label>
+        </div>
       </div>
-      <div>
-        <label for="deviationJustification" style="display: block; margin-bottom: 5px; font-weight: bold;">Justification:</label>
-        <textarea id="deviationJustification" placeholder="Explain why this dispensation is necessary..."
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 100px; resize: vertical;"></textarea>
+      <div style="margin-top:12px; border:1px solid #2196f3; background:#ffffff;">
+        <div style="background:#bbdefb; border-bottom: 1px solid #2196f3; padding:6px 10px; font-weight:bold; text-align:center;">
+          ICP or Well Examination Required
+        </div>
+        <div style="padding:10px; display:flex; gap:18px; justify-content:center;">
+          <label style="margin-left:12px;">
+            <input type="radio" name="examinationRequired" value="Yes" id="examinationYes"> Yes
+          </label>
+          <label style="margin-left:18px;">
+            <input type="radio" name="examinationRequired" value="No" id="examinationNo"> No
+          </label>
+        </div>
       </div>
-      <div>
-        <label for="deviationExpiry" style="display: block; margin-bottom: 5px; font-weight: bold;">Expiry Date:</label>
-        <input type="date" id="deviationExpiry" min="${minExpiryDate}" value="${defaultExpiryDate}"
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-        <p style="margin: 5px 0 0; font-size: 0.8em; color: #666;">Specify how long this dispensation should remain in effect</p>
+      <div style="margin-top:12px; border:1px solid #2196f3; background:#ffffff;">
+        <div style="background:#bbdefb; border-bottom: 1px solid #2196f3; padding:6px 10px; font-weight:bold; text-align:center;">
+          Attachments
+        </div>
+        <div style="padding:10px; display:flex; gap:18px; justify-content:center;">
+          <input type="file" id="attachments" multiple style="margin-left:12px;">
+        </div>
       </div>
-    </div>
+      <div style="margin-top:12px; border:1px solid #2196f3; background:#ffffff;">
+        <div style="background:#bbdefb; border-bottom: 1px solid #2196f3; padding:6px 10px; font-weight:bold; text-align:center;">
+          Prepared By
+        </div>
+        <div style="padding:10px; display:flex; gap:18px;">
+          <label style="flex:1;">Name:<br>
+            <input type="text" id="preparedBy" value="${userEmail}" style="width:95%;">
+          </label>
+          <label style="flex:1;">Signature:<br>
+            <input type="text" id="signature" style="width:95%;">
+          </label>
+          <label style="flex:1;">Date:<br>
+            <input type="date" id="preparedDate" value="${today}" style="width:90%;">
+          </label>
+        </div>
+      </div>
+      
+    
 
-    <div style="display: flex; justify-content: space-between; margin-top: 24px; padding-top: 15px; border-top: 1px solid #eee;">
-      <button id="cancelDeviationBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Cancel</button>
-      <button id="submitDeviationBtn" style="background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">Submit for Approval</button>
+    <!-- other HTML -->
+    <div style="display: flex; justify-content: space-between; margin-top: 18px;">
+      <button type="button" id="cancelDeviationBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;" onclick="this.closest('#deviationRequestModal').remove()">Cancel</button>
+      <button type="submit" id="submitDeviationBtn" style="background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">Submit for Approval</button>
     </div>
+    <!-- other HTML -->
   `;
 
   backdrop.appendChild(modal);
   document.body.appendChild(backdrop);
 
-  const closeModal = () => backdrop.remove();
-  document.getElementById('closeDeviationModal').onclick = closeModal;
-  document.getElementById('cancelDeviationBtn').onclick = closeModal;
+  
+
+  
+  
   backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+  document.getElementById('cancelDeviationBtn').onclick = closeModal;
+  // Handle form submission
+  document.getElementById('dispensationForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+  backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };  
+    const installation = document.getElementById('installation').value.trim();
+    const field = document.getElementById('field').value.trim();
+    const wellNumber = document.getElementById('wellNumber').value.trim();
+    const dispTitle = document.getElementById('dispensationTitle').value.trim();
+    const datePlace = document.getElementById('datePlace').value;
+    const refNumber = document.getElementById('referenceNumber').value.trim();
+    const reqFormNumber = document.getElementById('requestFormNumber').value.trim();
+    const reason = document.getElementById('reason').value.trim();
+    const impact = document.getElementById('impact').value.trim();
+    const actionPlan = document.getElementById('actionPlan').value.trim();
+    const examinationRequired = document.getElementById('examinationYes').checked ? "Yes" : (document.getElementById('examinationNo').checked ? "No" : "");
+    const preparedBy = document.getElementById('preparedBy').value.trim();
+    const signature = document.getElementById('signature').value.trim();
+    const preparedDate = document.getElementById('preparedDate').value;
 
-  document.getElementById('submitDeviationBtn').onclick = async () => {
-    const description = document.getElementById('deviationDescription').value.trim();
-    const justification = document.getElementById('deviationJustification').value.trim();
-    const expiryDate = document.getElementById('deviationExpiry').value;
-
-
-    if (!description || !justification || !expiryDate) {
+    if (!installation || !field || !wellNumber || !dispTitle || !datePlace || !reason || !impact || !actionPlan || !preparedBy || !signature || !preparedDate || !examinationRequired) {
       showTemporaryMessage('Please fill all required fields', 'error');
       return;
     }
 
-    const deviation = await this.createDeviation(failureId, description, justification, expiryDate);
-    if (deviation) {
+    // Build deviation object for backend (customize as needed)
+    const deviation = {
+      escalationId: failureId,
+      installation,
+      field,
+      wellNumber,
+      dispensationTitle: dispTitle,
+      datePlace,
+      referenceNumber: refNumber,
+      requestFormNumber: reqFormNumber,
+      reason,
+      impact,
+      actionPlan,
+      examinationRequired,
+      preparedBy,
+      signature,
+      preparedDate,
+      status: 'pending'
+    };
+
+    // Call backend/createDeviation as needed (customize backend call)
+    const createdDeviation = await this.createDeviation(
+      failureId,
+      `${dispTitle}\n${reason}`,
+      `${impact}\nProposed: ${actionPlan}`,
+      datePlace
+    );
+
+    if (createdDeviation) {
       showTemporaryMessage('Dispensation request submitted for approval', 'success');
       closeModal();
       const currentFilter = document.getElementById('dashboardFilter')?.value || 'with-failures';
@@ -453,7 +555,7 @@ async showDeviationRequestForm(failureId) {
 
 async fetchFailureById(failureId) {
   try {
-    const resp = await fetch(`http://10.226.113.12:5000/api/integrity_test/failure?id=${encodeURIComponent(failureId)}`, {
+    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/failure?id=${encodeURIComponent(failureId)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });
@@ -628,222 +730,191 @@ async fetchFailureById(failureId) {
   // Show deviation summary for a well
   
   // Show admin panel for managing deviations
-  showDeviationAdminPanel() {
-    const existingModal = document.getElementById('deviationAdminModal');
-    if (existingModal) existingModal.remove();
-    
-    // Get pending deviations that need review
-    const pendingDeviations = this.getPendingDeviations();
-    
-    // Also get recently decided deviations (last 7 days)
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const recentlyDecidedDeviations = this.deviations.filter(d => 
-      d.status !== 'pending' && 
-      d.approvedAt && 
-      new Date(d.approvedAt) > oneWeekAgo
-    );
-    
-    const backdrop = document.createElement('div');
-    backdrop.id = 'deviationAdminModal';
-    backdrop.style.cssText = `
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75); z-index: 2100; display: flex;
-      align-items: center; justify-content: center; backdrop-filter: blur(5px);
-    `;
+  // Replacement for the approval modal in DeviationSystem
+// This version matches the structure and fields shown in ![image2](image2)
 
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: #ffffff; color: #333; border-radius: 8px; padding: 24px;
-      width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;
-      position: relative; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-      border-top: 5px solid #dc3545;
+showDeviationAdminPanel() {
+  const existingModal = document.getElementById('deviationAdminModal');
+  if (existingModal) existingModal.remove();
+
+  // Get pending deviations that need review
+  const pendingDeviations = this.getPendingDeviations();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'deviationAdminModal';
+  backdrop.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75); z-index: 2100; display: flex;
+    align-items: center; justify-content: center; backdrop-filter: blur(5px);
+  `;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: #ffffff; color: #333; border-radius: 8px; padding: 24px;
+    width: 95%; max-width: 850px; max-height: 95vh; overflow-y: auto;
+    position: relative; box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+    border-top: 5px solid #2196f3;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  `;
+
+  let pendingDeviationsHtml = '';
+
+  if (pendingDeviations.length === 0) {
+    pendingDeviationsHtml = `
+      <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-radius: 4px;">
+        <p style="margin: 0; color: #6c757d; font-style: italic;">No pending dispensation requests to review</p>
+      </div>
     `;
-    
-    // Create HTML for pending deviations
-    let pendingDeviationsHtml = '';
-    
-    if (pendingDeviations.length === 0) {
-      pendingDeviationsHtml = `
-        <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-radius: 4px;">
-          <p style="margin: 0; color: #6c757d; font-style: italic;">No pending dispensation requests to review</p>
-        </div>
-      `;
-    } else {
-      pendingDeviations.forEach((deviation, index) => {
-        pendingDeviationsHtml += `
-          <div id="deviation-${deviation.id}" class="deviation-card" style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
-            <div style="background: #fff3cd; padding: 12px; border-bottom: 1px solid #ddd;">
-              <h4 style="margin: 0; color: #856404;">⏳ Pending Dispensation Request #${index + 1}</h4>
-              <p style="margin: 5px 0 0; font-size: 0.9em; color: #666;">Submitted by ${deviation.createdBy} (${deviation.creatorRole}) on ${new Date(deviation.createdAt).toLocaleString()}</p>
+  } else {
+    pendingDeviations.forEach((deviation, index) => {
+      // You can pre-fill fields from deviation object if needed
+      pendingDeviationsHtml += `
+        <form id="approvalForm-${deviation.id}" style="margin-bottom: 38px; border: 2px solid #2196f3; border-radius: 6px; padding: 18px;">
+          <h2 style="margin-top:0; text-align:center;">Dispensation Request Form</h2>
+          <h3 style="margin-top:8px; margin-bottom: 14px; background:#e3f2fd; padding:4px 0; text-align:center;">Dispensation Request Form - Approval Page</h3>
+          <table style="width:100%; border-collapse:collapse;">
+            <tr>
+              <td style="width:32%;"><label>Installation:<br><input type="text" style="width:98%;" value="${deviation.installation||''}" readonly></label></td>
+              <td style="width:32%;"><label>Field:<br><input type="text" style="width:98%;" value="${deviation.field||''}" readonly></label></td>
+              <td style="width:32%;"><label>Well Number:<br><input type="text" style="width:98%;" value="${deviation.wellId||''}" readonly></label></td>
+            </tr>
+            <tr>
+              <td colspan="3"><label>Dispensation Title:<br><input type="text" style="width:99%;" value="${deviation.dispensationTitle||''}" readonly></label></td>
+            </tr>
+            <tr>
+              <td><label>Date and Place:<br><input type="text" style="width:98%;" value="${deviation.datePlace||''}" readonly></label></td>
+              <td><label>Dispensation Reference Number:<br><input type="text" style="width:98%;" value="${deviation.referenceNumber||''}" readonly></label></td>
+              <td><label>Dispensation Request Form:<br><input type="text" style="width:98%;" value="${deviation.requestFormNumber||''}" readonly></label></td>
+            </tr>
+          </table>
+          <div style="margin-top:10px; border: 1px solid #ddd; background: #f4f4f4;">
+            <div style="padding: 6px 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Response Summary</div>
+            <div style="padding: 6px 8px;">
+              <label style="margin-right:24px;">
+                <input type="radio" name="approved-${deviation.id}" id="approved-${deviation.id}" value="approved"> Approved
+              </label>
+              <label>
+                <input type="radio" name="approved-${deviation.id}" id="notapproved-${deviation.id}" value="notapproved"> Not Approved
+              </label>
             </div>
-            <div style="padding: 15px;">
-              <div style="margin-bottom: 10px;">
-                <p style="margin: 0; font-size: 0.9em;"><strong>Well:</strong> ${deviation.wellName} - Valve ${deviation.valveId}</p>
-                <p style="margin: 3px 0 0; font-size: 0.9em;"><strong>Related Escalation:</strong> ${deviation.escalationId}</p>
-                <p style="margin: 3px 0 0; font-size: 0.9em;"><strong>Requested Expiry Date:</strong> ${new Date(deviation.expiryDate).toLocaleDateString()}</p>
-              </div>
-              <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
-                <h5 style="margin: 0 0 8px 0; color: #495057;">Description:</h5>
-                <p style="margin: 0; white-space: pre-wrap;">${deviation.description}</p>
-              </div>
-              <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
-                <h5 style="margin: 0 0 8px 0; color: #495057;">Justification:</h5>
-                <p style="margin: 0; white-space: pre-wrap;">${deviation.justification}</p>
-              </div>
-              <div style="margin-top: 15px;">
-                <label for="comment-${deviation.id}" style="display: block; margin-bottom: 5px; font-weight: bold;">Decision Comments (required):</label>
-                <textarea id="comment-${deviation.id}" placeholder="Add comments about your decision..."
-                  style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 60px; resize: vertical;"></textarea>
-                <p style="margin: 5px 0 0; font-size: 0.8em; color: #dc3545;">* Comments are required when making a decision</p>
-              </div>
-              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;">
-                <button onclick="handleDenyDeviation('${deviation.id}')"
-                  style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                  Deny Request
-                </button>
-                <button onclick="handleApproveDeviation('${deviation.id}')"
-                  style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                  Approve Request
-                </button>
-              </div>
+            <div style="padding: 6px 8px;">
+              <label>Comments why?<br>
+                <textarea id="approvalComments-${deviation.id}" style="width:99%; min-height:38px;"></textarea>
+              </label>
             </div>
           </div>
-        `;
-      });
-    }
-    
-    // Create HTML for recently decided deviations
-    let recentDecisionsHtml = '';
-    
-    if (recentlyDecidedDeviations.length > 0) {
-      recentDecisionsHtml = `
-        <h4 style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #ddd;">Recent Decisions</h4>
-      `;
-      
-      recentlyDecidedDeviations.forEach((deviation) => {
-        const isApproved = deviation.status === 'approved';
-        const statusBg = isApproved ? '#d4edda' : '#f8d7da';
-        const statusColor = isApproved ? '#155724' : '#721c24';
-        const statusIcon = isApproved ? '✓' : '✗';
-        const statusText = isApproved ? 'Approved' : 'Denied';
-        
-        recentDecisionsHtml += `
-          <div style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
-            <div style="background: ${statusBg}; padding: 10px; border-bottom: 1px solid #ddd; color: ${statusColor}; display: flex; justify-content: space-between;">
-              <div>
-                <strong>${statusIcon} ${statusText}</strong> - Well ${deviation.wellName}, Valve ${deviation.valveId}
-              </div>
-              <div style="font-size: 0.9em;">
-                Decision: ${new Date(deviation.approvedAt).toLocaleString()}
-              </div>
-            </div>
-            <div style="padding: 10px; font-size: 0.9em;">
-              <p style="margin: 0 0 5px 0;"><strong>Requestor:</strong> ${deviation.createdBy} (${deviation.creatorRole})</p>
-              <p style="margin: 0 0 5px 0;"><strong>Decision by:</strong> ${deviation.approvedBy}</p>
-              ${deviation.comments && deviation.comments.length > 0 ? 
-                `<p style="margin: 0;"><strong>Comment:</strong> ${deviation.comments[deviation.comments.length-1].text}</p>` : 
-                '<p style="margin: 0; color: #6c757d; font-style: italic;">No comments provided</p>'
-              }
-            </div>
+          <div style="margin-top:14px;">
+            <table style="width:100%; border-collapse:collapse;">
+              <tr style="background:#e3f2fd;">
+                <th style="width:44%; text-align:left; padding:7px;">Approved by</th>
+                <th style="width:28%; text-align:left; padding:7px;">Signature</th>
+                <th style="width:28%; text-align:left; padding:7px;">Date</th>
+              </tr>
+              <tr>
+                <td>Offshore Production Supervisor</td>
+                <td><input type="text" style="width:97%;"></td>
+                <td><input type="date" style="width:97%;"></td>
+              </tr>
+              <tr>
+                <td>Well Services Team Lead</td>
+                <td><input type="text" style="width:97%;"></td>
+                <td><input type="date" style="width:97%;"></td>
+              </tr>
+              <tr>
+                <td>Production Engineering Manager</td>
+                <td><input type="text" style="width:97%;"></td>
+                <td><input type="date" style="width:97%;"></td>
+              </tr>
+              <tr>
+                <td>Operations Director</td>
+                <td><input type="text" style="width:97%;"></td>
+                <td><input type="date" style="width:97%;"></td>
+              </tr>
+              <tr>
+                <td>Country Manager</td>
+                <td><input type="text" style="width:97%;"></td>
+                <td><input type="date" style="width:97%;"></td>
+              </tr>
+            </table>
           </div>
-        `;
-      });
-    }
-    
-    modal.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-        <h3 style="margin: 0; font-size: 1.5em;">Dispensation Request Management</h3>
-        <button id="closeAdminModal" title="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888; line-height: 1;">&times;</button>
-      </div>
-      <p style="color: #666; margin-top: 0; margin-bottom: 20px;">
-        <strong>${pendingDeviations.length}</strong> dispensation request${pendingDeviations.length !== 1 ? 's' : ''} pending your review.
-      </p>
-      <div>
-        ${pendingDeviationsHtml}
-        ${recentDecisionsHtml}
-      </div>
-      <div style="text-align: right; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-        <button id="closeAdminBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Close</button>
-      </div>
-    `;
-
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
-
-    const closeModal = () => backdrop.remove();
-    document.getElementById('closeAdminModal').onclick = closeModal;
-    document.getElementById('closeAdminBtn').onclick = closeModal;
-    backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
-    
-    // Add global handlers for approve/deny
-    window.handleApproveDeviation = (deviationId) => {
-      const commentEl = document.getElementById(`comment-${deviationId}`);
-      const comment = commentEl?.value?.trim() || '';
-      
-      if (!comment) {
-        showTemporaryMessage('Please provide comments with your decision', 'error');
-        commentEl.focus();
-        return;
-      }
-      
-      window.deviationSystem.approveDeviation(deviationId, comment).then(() => {
-        document.getElementById(`deviation-${deviationId}`).remove();
-        showTemporaryMessage('Dispensation request approved', 'success');
-        
-        // Check if we should close the modal (no more pending items)
-        if (window.deviationSystem.getPendingDeviations().length === 0) {
-          setTimeout(() => {
-            const modal = document.getElementById('deviationAdminModal');
-            if (modal) modal.remove();
-            
-            // Refresh the dashboard
-            const currentFilter = document.getElementById('dashboardFilter')?.value || 'with-failures';
-            if (typeof renderFilteredDashboard === 'function') {
-              renderFilteredDashboard(currentFilter);
-            }
-          }, 1500);
-        } else {
-          // Refresh the modal to show in recent decisions
-          window.deviationSystem.showDeviationAdminPanel();
-        }
-      });
-    };
-    
-    window.handleDenyDeviation = (deviationId) => {
-      const commentEl = document.getElementById(`comment-${deviationId}`);
-      const comment = commentEl?.value?.trim() || '';
-      
-      if (!comment) {
-        showTemporaryMessage('Please provide comments with your decision', 'error');
-        commentEl.focus();
-        return;
-      }
-      
-      window.deviationSystem.denyDeviation(deviationId, comment).then(() => {
-        document.getElementById(`deviation-${deviationId}`).remove();
-        showTemporaryMessage('Dispensation request denied', 'info');
-        
-        // Check if we should close the modal (no more pending items)
-        if (window.deviationSystem.getPendingDeviations().length === 0) {
-          setTimeout(() => {
-            const modal = document.getElementById('deviationAdminModal');
-            if (modal) modal.remove();
-            
-            // Refresh the dashboard
-            const currentFilter = document.getElementById('dashboardFilter')?.value || 'with-failures';
-            if (typeof renderFilteredDashboard === 'function') {
-              renderFilteredDashboard(currentFilter);
-            }
-          }, 1500);
-        } else {
-          // Refresh the modal to show in recent decisions
-          window.deviationSystem.showDeviationAdminPanel();
-        }
-      });
-    };
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+            <button type="button" onclick="window.handleSubmitApprovalDecision('${deviation.id}')" style="background: #2196f3; color: white; border: none; padding: 10px 24px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+              Submit Decision
+            </button>
+          </div>
+        </form>
+      `;
+    });
   }
+
+  modal.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+      <h2 style="margin: 0; font-size: 1.25em;">Dispensation Request Approval Panel</h2>
+      <button id="closeAdminModal" title="Close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #888;">&times;</button>
+    </div>
+    <div>
+      ${pendingDeviationsHtml}
+    </div>
+    <div style="text-align: right; margin-top: 20px;">
+      <button id="closeAdminBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Close</button>
+    </div>
+  `;
+
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+
+  const closeModal = () => backdrop.remove();
+  document.getElementById('closeAdminModal').onclick = closeModal;
+  document.getElementById('closeAdminBtn').onclick = closeModal;
+  backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+
+  window.handleSubmitApprovalDecision = async (deviationId) => {
+    const approved = document.getElementById(`approved-${deviationId}`).checked;
+    const notApproved = document.getElementById(`notapproved-${deviationId}`).checked;
+    const comments = document.getElementById(`approvalComments-${deviationId}`).value.trim();
+
+    if (!approved && !notApproved) {
+      showTemporaryMessage('Please select Approved or Not Approved.', 'error');
+      return;
+    }
+    if (!comments) {
+      showTemporaryMessage('Please provide comments for your decision.', 'error');
+      return;
+    }
+
+    const deviation = this.deviations.find(d => d.id === deviationId);
+    if (!deviation) {
+      showTemporaryMessage('Deviation not found', 'error');
+      return;
+    }
+
+    deviation.status = approved ? 'approved' : 'denied';
+    deviation.approvedAt = new Date();
+    deviation.approvedBy = window.AuthService.currentUserData?.email || 'admin';
+
+    deviation.comments.push({
+      text: `Approval comment: ${comments}`,
+      author: window.AuthService.currentUserData?.email || 'admin',
+      timestamp: new Date()
+    });
+
+    // Save decision to backend
+    try {
+      await this.updateDeviationInDatabase(deviation);
+      showTemporaryMessage(approved ? 'Dispensation request approved' : 'Dispensation request denied', approved ? 'success' : 'info');
+      document.getElementById(`approvalForm-${deviation.id}`).remove();
+      // Optionally close modal if none left
+      if (this.getPendingDeviations().length === 0) {
+        setTimeout(closeModal, 1200);
+      }
+    } catch (error) {
+      showTemporaryMessage('Failed to update decision in database', 'warning');
+    }
+
+    // Refresh dashboard, etc.
+    this.updateDashboardDeviationIndicators();
+  };
+}
   
   // Show well deviation summary
   showWellDeviationSummary(wellName) {
