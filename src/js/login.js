@@ -2,7 +2,7 @@
 
 
 // --- API ENDPOINTS CONFIGURATION ---
-const API_BASE_URL = 'http://10.226.113.28:5000/api'; // Updated API base URL
+const API_BASE_URL = 'http://127.0.0.1:5000/api'; // Updated API base URL
 
 // --- USER AUTHENTICATION & MANAGEMENT ---
 class AuthService {

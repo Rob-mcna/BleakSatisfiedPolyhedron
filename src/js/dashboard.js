@@ -270,7 +270,7 @@ async function fetchValveTestResults() {
                 ? well.christmasTree.valves : [];
             for (const valve of valves) {
                 const valveId = valve.id;
-                const url = `http://10.226.113.28:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
+                const url = `http://127.0.0.1:5000/api/integrity_test/?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`;
                 fetchPromises.push(
                     fetch(url)
                         .then(resp => {
@@ -357,7 +357,7 @@ async function fetchWellsAndInitialize() {
     try {
         showTemporaryMessage('Loading wells data...', 'info');
 
-        const response = await fetch('http://10.226.113.28:5000/api/wells');
+        const response = await fetch('http://127.0.0.1:5000/api/wells');
         if (!response.ok) {
             console.error("Failed to fetch wells data:", response.status, await response.text());
             showTemporaryMessage('Failed to load wells data', 'warning');
@@ -429,7 +429,7 @@ function getLiveStatusForAllRingsWithEscalation(well) {
             continue;
         }
 
-        const isTestPassed = latestResult.pass && latestResult.test_valid && latestResult.leak_rate_pass;
+        const isTestPassed = latestResult.status === "pass";
 
         // --- CORE LOGIC: If the test failed, process it ---
         if (!isTestPassed) {
@@ -557,7 +557,7 @@ function updateDashboardKPIs(wellsForKPIs) {
 function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
-  fetch('http://10.226.113.28:5000/api/wells/')
+  fetch('http://127.0.0.1:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -573,7 +573,7 @@ function fetchWellsAndSyncResultsWithFilter() {
       
       console.log(`Dashboard: Fetched and deduplicated wells - ${wells.length} unique wells found`);
       
-      return fetch('http://10.226.113.28:5000/api/valves/')
+      return fetch('http://127.0.0.1:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);
@@ -624,7 +624,7 @@ function fetchWellsAndSyncResultsWithFilter() {
 function runIntegrityTestAndRefreshDashboard(testData) {
   console.log('Dashboard: Submitting integrity test...');
 
-  fetch('http://10.226.113.28:5000/api/run_integrity_test', {
+  fetch('http://127.0.0.1:5000/api/run_integrity_test', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(testData)
@@ -1367,7 +1367,7 @@ function fetchWellsAndSyncResultsWithFilter() {
   console.log(`Dashboard: Fetching all application data...`);
   
   // Keep all the existing fetch logic from fetchWellsAndSyncResults
-  fetch('http://10.226.113.28:5000/api/wells/')
+  fetch('http://127.0.0.1:5000/api/wells/')
     .then(response => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -1377,7 +1377,7 @@ function fetchWellsAndSyncResultsWithFilter() {
     .then(wellsData => {
       const processedWellsData = wellsData || [];
       
-      return fetch('http://10.226.113.28:5000/api/valves/')
+      return fetch('http://127.0.0.1:5000/api/valves/')
         .then(valvesResponse => {
           if (!valvesResponse.ok) {
             console.warn(`Dashboard: Failed to fetch valve list from API: ${valvesResponse.status}. Proceeding without full valve list.`);

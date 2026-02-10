@@ -111,7 +111,7 @@ class EscalationSystem {
 
       console.log('Attempting to save escalation:', backendData);
 
-      const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ class EscalationSystem {
       console.log(`Updating escalation in database for well ID: ${escalation.wellId}`);
       
       // FIX: Changed method to 'POST' and parameter to 'well' to match the working create endpoint.
-      const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/failure?well=${encodeURIComponent(escalation.wellId)}&valve=${encodeURIComponent(escalation.valveId)}`, {
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json'
@@ -495,7 +495,7 @@ async function showDetailedFailureModal(ringInfo, wellName) {
   // Fetch the escalation record from backend (display-only)
   let record = null;
   try {
-    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/failure?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`, {
+    const resp = await fetch(`http://127.0.0.1:5000/api/integrity_test/failure?well=${encodeURIComponent(wellId)}&valve=${encodeURIComponent(valveId)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });

@@ -89,7 +89,7 @@ class DeviationSystem {
     };
     
 
-    const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/action?id=${encodeURIComponent(deviation.escalationId)}`, {
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/action?id=${encodeURIComponent(deviation.escalationId)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ class DeviationSystem {
     
 
 
-    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/action/${encodeURIComponent(deviation.dbId)}`, {
+    const resp = await fetch(`http://127.0.0.1:5000/api/integrity_test/action/${encodeURIComponent(deviation.dbId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(payload)
@@ -149,7 +149,7 @@ class DeviationSystem {
 
 async fetchDeviationsForEscalationFromDatabase(failureId) {
   try {
-    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/action?failure_id=${encodeURIComponent(failureId)}`, {
+    const resp = await fetch(`http://127.0.0.1:5000/api/integrity_test/action?failure_id=${encodeURIComponent(failureId)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });
@@ -555,7 +555,7 @@ async showDeviationRequestForm(failureId) {
 
 async fetchFailureById(failureId) {
   try {
-    const resp = await fetch(`http://10.226.113.28:5000/api/integrity_test/failure?id=${encodeURIComponent(failureId)}`, {
+    const resp = await fetch(`http://10.226.112.34:5000/api/integrity_test/failure?id=${encodeURIComponent(failureId)}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });

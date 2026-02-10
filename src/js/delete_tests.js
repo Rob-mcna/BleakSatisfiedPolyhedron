@@ -32,7 +32,7 @@ async function deleteSpecificTest(wellId, valveId, testIndex) {
   try {
     showTemporaryMessage('Deleting test...', 'info');
     
-    const response = await fetch(`http://10.226.14.79:5000/api/integrity_test/delete`, {
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/delete`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -63,7 +63,7 @@ async function deleteAllTestsForValve(wellId, valveId) {
   try {
     showTemporaryMessage('Deleting all tests...', 'info');
     
-    const response = await fetch(`http://10.226.14.79:5000/api/integrity_test/delete_all`, {
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/delete_all`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

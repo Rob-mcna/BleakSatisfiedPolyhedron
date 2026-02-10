@@ -1,1858 +1,1678 @@
-/**
- * Enhanced Well Integrity Reports System
- * Improved version with comprehensive valve test analysis and reporting capabilities
- * Author: MiniMax Agent
- * Date: 2025-10-01
- */
+// ==========================================
+// ENHANCED COMPREHENSIVE REPORTS SECTION FOR WELL INTEGRITY MANAGEMENT TOOL
+// ==========================================
 
-// --- ENHANCED REPORTS SECTION WITH TEST RESULTS INTEGRATION ---
-
-function renderReportsSection() {
-  const container = document.getElementById('reportsUI');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="report-controls-panel">
-      <div class="report-panel-header">
-        <h2>Filters & Report Generation</h2>
-      </div>
-      <div class="report-panel-body" id="reportFiltersAccordionContainer"> 
-        <!-- Accordion will be built here by setupReportFilters -->
-      </div>
-      <div class="report-panel-footer">
-        <button id="generateReportBtn" class="primary-btn report-action-btn">Generate Report</button>
-        <button id="exportCSVBtn" class="secondary-btn report-action-btn" style="display:none;">Export CSV</button>
-        <button id="exportPDFBtn" class="secondary-btn report-action-btn" style="display:none;">Export PDF</button>
-        <button id="exportHTMLBtn" class="secondary-btn report-action-btn" style="display:none;">Export HTML</button>
-      </div>
-    </div>
-    <div id="reportOutput" class="report-output-area">
-      <div class="report-output-placeholder">
-          <svg class="placeholder-icon" xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <line x1="10" y1="9" x2="8" y2="9"></line>
-          </svg>
-          <p class="placeholder-text-main">Report Display Area</p>
-          <p class="placeholder-text-sub">Use the filters on the left and click "Generate Report".</p>
-          <p class="placeholder-text-detail">Your selected data and visualizations will appear here.</p>
-      </div>
-    </div>
-    <div id="customReportChart" style="margin-top:18px;"></div>
-  `;
-
-  setupReportFilters(); // Initial call - no argument passed
-  
-  document.getElementById('generateReportBtn').onclick = generateReport;
-  document.getElementById('exportCSVBtn').onclick = exportCurrentReportCSV;
-  document.getElementById('exportPDFBtn').onclick = exportCurrentReportPDF;
-  document.getElementById('exportHTMLBtn').onclick = exportCurrentReportHTML;
-}
-
-let lastReportHeaders = [];
+// Global variables for export functionality
 let lastReportData = [];
+let lastReportHeaders = [];
+let lastWellInfoData = [];
+let lastInitialConditionsData = [];
+let lastFinalConditionsData = [];
 let lastReportType = '';
-let lastReportFilters = {};
+let lastReportSummary = {};
 
-// ENHANCED setupReportFilters function with improved valve test options
-function setupReportFilters(explicitReportType) {
-  const accordionContainer = document.getElementById('reportFiltersAccordionContainer');
+/**
+ * Main function to render the enhanced reports section
+ */
+function renderReportsSection() {
+  const reportsContainer = document.getElementById('reportsSection');
+  if (!reportsContainer) return;
+
+  const html = `
+    <div class="reports-header">
+      <h2>Well Integrity Test Reports & Analysis</h2>
+      <p>Comprehensive reporting and analysis of your well integrity testing program</p>
+    </div>
+    
+    <div class="report-controls">
+      <div class="report-type-selection">
+        <label for="reportTypeSelect">Report Type:</label>
+        <select id="reportTypeSelect">
+          <option value="">-- Select Report Type --</option>
+          <option value="valveTestResults">Valve Test Results Summary</option>
+          <option value="testFailureSummary">Critical Failure Analysis Report</option>
+          <option value="detailedTestResults">Detailed Technical Results</option>
+          <option value="wellOverview">Well Integrity Overview</option>
+          <option value="complianceReport">Regulatory Compliance Report</option>
+          <option value="riskAssessment">Risk Assessment Report</option>
+        </select>
+      </div>
+      
+      <div id="reportFiltersContainer" class="report-filters">
+        <!-- Filters will be populated dynamically -->
+      </div>
+      
+      <div class="report-actions">
+        <button id="generateReportBtn" class="primary-btn" disabled>Generate Report</button>
+        <button id="exportPdfBtn" class="secondary-btn" disabled>Export PDF</button>
+        <button id="exportCsvBtn" class="secondary-btn" disabled>Export CSV</button>
+        <button id="printReportBtn" class="secondary-btn" disabled>Print Report</button>
+      </div>
+    </div>
+    
+    <div id="reportOutputContainer" class="report-output">
+      <div class="report-placeholder">
+        <div class="placeholder-content">
+          <h3>Ready to Generate Reports</h3>
+          <p>Select a report type and configure your filters to generate comprehensive well integrity analysis</p>
+          <ul class="feature-list">
+            <li>Detailed failure analysis</li>
+            <li>Statistical summaries</li>
+            <li>Compliance reporting</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
   
-  // Determine the report type to use for building filters.
-  const reportTypeForLogic = explicitReportType !== undefined 
-                             ? explicitReportType
-                             : (document.getElementById('reportTypeSelect')?.value || "wellStatus");
+  reportsContainer.innerHTML = html;
+  setupReportEventHandlers();
+}
 
-  // Store current report type
-  lastReportType = reportTypeForLogic;
-
-  // Now clear the container AFTER we've determined the reportTypeForLogic
-  accordionContainer.innerHTML = ''; 
-
-  const allFilterGroups = [
-    {
-      id: "reportTypeGroup",
-      title: "Report Type",
-      isOpen: true, 
-      items: [
-        { 
-          label: "", type: "select", id: "reportTypeSelect", 
-          isReportTypeSelector: true,
-          options: [
-            { value: "wellStatus", text: "Well Status Overview" },
-            { value: "deviations", text: "Deviations/Dispensations" },
-            { value: "maasp", text: "MAASP Exceedances" },
-            { value: "audit", text: "Deviation Audit Logs" },
-            { value: "valveTestDetail", text: "Valve Test Results (Basic)" },
-            { value: "valveTestComprehensive", text: "Comprehensive Test Analysis" },
-            { value: "wellIntegrityReport", text: "Well Integrity Assessment" },
-            { value: "custom", text: "Custom Chart/Report" }
-          ]
-        }
-      ]
-    },
-    // Dynamic filter groups will be added below
-  ];
-
-  // Add dynamic filter groups based on reportTypeForLogic
-  if (reportTypeForLogic === "wellStatus" || reportTypeForLogic === "maasp") {
-    allFilterGroups.push({ 
-      id: "locationFiltersGroup", title: "Location Filters", items: [
-        { label: "Well:", type: "select", id: "filterWell", options: (window.wells || []).map(w => ({ value: w.id, text: w.id })) },
-        { label: "Country:", type: "select", id: "filterCountry", options: Array.from(new Set((window.wells || []).map(w => w.country))).filter(Boolean).map(c => ({ value: c, text: c })) },
-        { label: "Field:", type: "select", id: "filterField", options: Array.from(new Set((window.wells || []).map(w => w.field))).filter(Boolean).map(f => ({ value: f, text: f })) },
-        { label: "Platform:", type: "select", id: "filterPlatform", options: Array.from(new Set((window.wells || []).map(w => w.platform))).filter(Boolean).map(p => ({ value: p, text: p })) }
-      ]});
-    allFilterGroups.push({ 
-      id: "statusDateFiltersGroup", title: "Status & Date", items: [
-        { label: "Status:", type: "select", id: "filterStatus", options: [{value:"Red", text:"Red"}, {value:"Orange", text:"Orange"}, {value:"Yellow", text:"Yellow"}, {value:"Green", text:"Green"}] },
-        { label: "Date From:", type: "date", id: "filterDateFrom" },
-        { label: "Date To:", type: "date", id: "filterDateTo" }
-      ]});
-  } else if (reportTypeForLogic === "deviations" || reportTypeForLogic === "audit") {
-    allFilterGroups.push({ 
-      id: "deviationFiltersGroup", title: "Deviation Filters", items: [
-        { label: "Well:", type: "select", id: "filterDevWell", options: (window.wells || []).map(w => ({ value: w.id, text: w.id })) },
-        { label: "Status:", type: "select", id: "filterDevStatus", options: [{value:"draft",text:"Draft"}, {value:"open",text:"Open"}, {value:"closed",text:"Closed"}, {value:"expired",text:"Expired"}, {value:"dispensation_requested",text:"Dispensation Requested"}] },
-        { label: "Date From:", type: "date", id: "filterDevDateFrom" },
-        { label: "Date To:", type: "date", id: "filterDevDateTo" }
-      ]});
-  } else if (reportTypeForLogic === "valveTestDetail" || reportTypeForLogic === "valveTestComprehensive" || reportTypeForLogic === "wellIntegrityReport") {
-     allFilterGroups.push({ 
-      id: "valveTestFiltersGroup", title: "Test Filters", items: [
-        { label: "Well ID:", type: "text", id: "filterVtdWell", placeholder: "e.g., Well-1" },
-        { label: "Valve ID:", type: "text", id: "filterVtdValve", placeholder: "e.g., HWV" },
-        { label: "Test Result:", type: "select", id: "filterTestResult", options: [{value:"pass", text:"Pass Only"}, {value:"fail", text:"Fail Only"}] },
-        { label: "Test Date From:", type: "date", id: "filterTestDateFrom" },
-        { label: "Test Date To:", type: "date", id: "filterTestDateTo" }
-      ]});
-      
-      if (reportTypeForLogic === "valveTestComprehensive" || reportTypeForLogic === "wellIntegrityReport") {
-        allFilterGroups.push({
-          id: "analysisFiltersGroup", title: "Analysis Options", items: [
-            { label: "Include Failure Analysis:", type: "checkbox", id: "includeFailureAnalysis", checked: true },
-            { label: "Include Recommendations:", type: "checkbox", id: "includeRecommendations", checked: true },
-            { label: "Include Trends:", type: "checkbox", id: "includeTrends", checked: false },
-            { label: "Group by Well:", type: "checkbox", id: "groupByWell", checked: true }
-          ]
-        });
-      }
-  }
-
-  // Build HTML for accordion groups
-  allFilterGroups.forEach(group => {
-    const groupWrapper = document.createElement('div');
-    groupWrapper.className = 'accordion-group';
-    if (group.isOpen) {
-      groupWrapper.classList.add('open');
-    }
-
-    const header = document.createElement('button');
-    header.className = 'accordion-header';
-    header.innerHTML = `${group.title} <span class="accordion-icon">${group.isOpen ? '-' : '+'}</span>`;
-    header.setAttribute('aria-expanded', group.isOpen ? 'true' : 'false');
-    header.setAttribute('aria-controls', `accordion-content-${group.id}`);
-
-    const content = document.createElement('div');
-    content.className = 'accordion-content';
-    content.id = `accordion-content-${group.id}`;
-    if (!group.isOpen) {
-      content.style.display = 'none';
-    }
-
-    let contentHtml = '';
-    group.items.forEach(item => {
-      contentHtml += `<div class="filter-item">`;
-      if (item.label) {
-          contentHtml += `<label for="${item.id}">${item.label}</label>`;
-      }
-      if (item.type === "select") {
-        contentHtml += `<select id="${item.id}" name="${item.id}">`;
-        if (!item.isReportTypeSelector) { 
-            contentHtml += `<option value="">All</option>`;
-        }
-        contentHtml += `${(item.options || []).map(opt => 
-            `<option value="${opt.value}" ${reportTypeForLogic === opt.value && item.isReportTypeSelector ? 'selected' : ''}>${opt.text}</option>`
-        ).join('')}
-                      </select>`;
-      } else if (item.type === "date") {
-        contentHtml += `<input type="date" id="${item.id}" name="${item.id}">`;
-      } else if (item.type === "text") {
-        contentHtml += `<input type="text" id="${item.id}" name="${item.id}" placeholder="${item.placeholder || ''}">`;
-      } else if (item.type === "checkbox") {
-        contentHtml += `<input type="checkbox" id="${item.id}" name="${item.id}" ${item.checked ? 'checked' : ''}> ${item.label}`;
-      }
-      contentHtml += `</div>`;
-    });
-    content.innerHTML = contentHtml;
-
-    groupWrapper.appendChild(header);
-    groupWrapper.appendChild(content);
-    accordionContainer.appendChild(groupWrapper);
-
-    header.onclick = function() {
-      const currentlyOpen = groupWrapper.classList.toggle('open');
-      content.style.display = currentlyOpen ? '' : 'none';
-      this.setAttribute('aria-expanded', currentlyOpen ? 'true' : 'false');
-      this.querySelector('.accordion-icon').textContent = currentlyOpen ? '-' : '+';
+/**
+ * Setup event handlers for report controls
+ */
+function setupReportEventHandlers() {
+  const reportTypeSelect = document.getElementById('reportTypeSelect');
+  const generateBtn = document.getElementById('generateReportBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const printBtn = document.getElementById('printReportBtn');
+  
+  if (reportTypeSelect) {
+    reportTypeSelect.onchange = function() {
+      setupReportFilters(this.value);
+      generateBtn.disabled = !this.value;
+      exportPdfBtn.disabled = true;
+      exportCsvBtn.disabled = true;
+      printBtn.disabled = true;
     };
-    
-    // Attach onchange handler for reportTypeSelect
-    if (group.items.some(item => item.isReportTypeSelector)) {
-        const reportTypeSelectElement = content.querySelector('#reportTypeSelect');
-        if (reportTypeSelectElement) {
-            reportTypeSelectElement.onchange = function() {
-                setupReportFilters(this.value); 
-            };
-        }
-    }
-  });
+  }
+  
+  if (generateBtn) {
+    generateBtn.onclick = generateReport;
+  }
+  
+  if (exportPdfBtn) {
+    exportPdfBtn.onclick = exportCurrentReportPDF;
+  }
+  
+  if (exportCsvBtn) {
+    exportCsvBtn.onclick = exportCurrentReportCSV;
+  }
+  
+  if (printBtn) {
+    printBtn.onclick = printCurrentReport;
+  }
 }
 
-// ENHANCED generateReport function with comprehensive test analysis
+/**
+ * Setup enhanced filters based on selected report type
+ */
+function setupReportFilters(reportType) {
+  const filtersContainer = document.getElementById('reportFiltersContainer');
+  if (!filtersContainer) return;
+  
+  let filtersHtml = '';
+  
+  switch (reportType) {
+    case 'valveTestResults':
+      filtersHtml = `
+        <div class="filter-group">
+          <label for="wellFilter">Select Well:</label>
+          <select id="wellFilter">
+            <option value="">All Wells</option>
+            ${(window.wells || []).map(well => 
+              `<option value="${well.id}">${well.name || well.id}</option>`
+            ).join('')}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="valveTypeFilter">Valve Type:</label>
+          <select id="valveTypeFilter">
+            <option value="">All Valve Types</option>
+            <option value="SCSSV">SCSSV (Subsurface Safety)</option>
+            <option value="MMV">MMV (Master Manual)</option>
+            <option value="HMV">HMV (High Pressure Manual)</option>
+            <option value="MWV">MWV (Manual Wing)</option>
+            <option value="HWV">HWV (High Pressure Wing)</option>
+            <option value="SV">SV (Safety Valve)</option>
+            <option value="PFSV">PFSV (Production Flow Safety)</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="testStatusFilter">Test Status:</label>
+          <select id="testStatusFilter">
+            <option value="">All Results</option>
+            <option value="pass">Passed Tests Only</option>
+            <option value="fail">Failed Tests Only</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="includeSummaryStats">Include Statistics:</label>
+          <input type="checkbox" id="includeSummaryStats" checked>
+        </div>
+      `;
+      break;
+      
+    case 'testFailureSummary':
+    case 'riskAssessment':
+      filtersHtml = `
+        <div class="filter-group">
+          <label for="wellFilter">Select Well:</label>
+          <select id="wellFilter">
+            <option value="">All Wells</option>
+            ${(window.wells || []).map(well => 
+              `<option value="${well.id}">${well.name || well.id}</option>`
+            ).join('')}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="valveTypeFilter">Valve Type:</label>
+          <select id="valveTypeFilter">
+            <option value="">All Valve Types</option>
+            <option value="SCSSV">SCSSV (Critical Subsurface)</option>
+            <option value="MMV">MMV (Master Manual)</option>
+            <option value="HMV">HMV (High Pressure Manual)</option>
+            <option value="MWV">MWV (Manual Wing)</option>
+            <option value="HWV">HWV (High Pressure Wing)</option>
+            <option value="SV">SV (Safety Valve)</option>
+            <option value="PFSV">PFSV (Production Flow Safety)</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="severityFilter">Failure Severity:</label>
+          <select id="severityFilter">
+            <option value="">All Severities</option>
+            <option value="critical">Critical Failures</option>
+            <option value="major">Major Failures</option>
+            <option value="minor">Minor Issues</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="includeRecommendations">Include Recommendations:</label>
+          <input type="checkbox" id="includeRecommendations" checked>
+        </div>
+      `;
+      break;
+      
+    case 'detailedTestResults':
+      filtersHtml = `
+        <div class="filter-group">
+          <label for="wellFilter">Select Well:</label>
+          <select id="wellFilter">
+            <option value="">All Wells</option>
+            ${(window.wells || []).map(well => 
+              `<option value="${well.id}">${well.name || well.id}</option>`
+            ).join('')}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="valveTypeFilter">Valve Type:</label>
+          <select id="valveTypeFilter">
+            <option value="">All Valve Types</option>
+            <option value="SCSSV">SCSSV</option>
+            <option value="MMV">MMV</option>
+            <option value="HMV">HMV</option>
+            <option value="MWV">MWV</option>
+            <option value="HWV">HWV</option>
+            <option value="SV">SV</option>
+            <option value="PFSV">PFSV</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="testStatusFilter">Test Status:</label>
+          <select id="testStatusFilter">
+            <option value="">All Results</option>
+            <option value="pass">Passed Only</option>
+            <option value="fail">Failed Only</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="includeCalculations">Include Calculations:</label>
+          <input type="checkbox" id="includeCalculations" checked>
+        </div>
+      `;
+      break;
+      
+    case 'wellOverview':
+    case 'complianceReport':
+      filtersHtml = `
+        <div class="filter-group">
+          <label for="wellFilter">Select Well:</label>
+          <select id="wellFilter">
+            <option value="">All Wells</option>
+            ${(window.wells || []).map(well => 
+              `<option value="${well.id}">${well.name || well.id}</option>`
+            ).join('')}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="includeCompliance">Compliance Details:</label>
+          <input type="checkbox" id="includeCompliance" checked>
+        </div>
+        
+        <div class="filter-group">
+          <label for="includeRecommendations">Include Recommendations:</label>
+          <input type="checkbox" id="includeRecommendations" checked>
+        </div>
+        
+        <div class="filter-group">
+          <label for="riskLevel">Assessment Level:</label>
+          <select id="riskLevel">
+            <option value="basic">Basic Assessment</option>
+            <option value="detailed">Detailed Analysis</option>
+            <option value="comprehensive">Comprehensive Review</option>
+          </select>
+        </div>
+      `;
+      break;
+  }
+  
+  filtersContainer.innerHTML = filtersHtml;
+}
+
+/**
+ * Generate enhanced report based on selected type and filters
+ */
+/**
+ * Updated generateReport function to store three-table data
+ */
 function generateReport() {
-  const type = document.getElementById('reportTypeSelect')?.value; 
-  if (!type) {
-    console.error("Report type select element not found or has no value.");
-    alert("Please select a report type.");
-    return;
+  const reportType = document.getElementById('reportTypeSelect')?.value;
+  if (!reportType) return;
+  
+  lastReportType = reportType;
+  
+  // Get filter values
+  const filters = getFilterValues();
+  
+  // Generate report data (keeping the old structure for compatibility)
+  let reportData = [];
+  let reportHeaders = [];
+  let reportSummary = {};
+  
+  switch (reportType) {
+    case 'valveTestResults':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateEnhancedValveTestResultsReport(filters));
+      break;
+    case 'testFailureSummary':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateEnhancedTestFailureSummaryReport(filters));
+      break;
+    case 'detailedTestResults':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateEnhancedDetailedTestResultsReport(filters));
+      break;
+    case 'wellOverview':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateEnhancedWellOverviewReport(filters));
+      break;
+    case 'complianceReport':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateComplianceReport(filters));
+      break;
+    case 'riskAssessment':
+      ({ data: reportData, headers: reportHeaders, summary: reportSummary } = generateRiskAssessmentReport(filters));
+      break;
   }
-
-  let headers = [];
-  let data = [];
-  document.getElementById('customReportChart').innerHTML = ''; 
-
-  // Store current filters for export functions
-  lastReportFilters = getCurrentFilters();
-
-  if (type === "wellStatus") {
-    headers = ["ID", "Country", "Field", "Platform", "Status", "Last Test Date", "Details Label", "Details Message"];
-    data = filterWells().map(w => [
-      w.id, w.country, w.field, w.platform, w.status, w.lastTest,
-      (w.rings && w.rings.length > 0 ? w.rings[0].label : ''),
-      (w.rings && w.rings.length > 0 ? w.rings[0].message : '')
-    ]);
-  } else if (type === "deviations") {
-    headers = ["Well ID", "Title", "Type", "Status", "Valid Until", "Created At"];
-    data = filterDeviations().map(d => [
-      d.wellId || "N/A", d.title, d.type, d.status, d.validUntil,
-      d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "N/A"
-    ]);
-  } else if (type === "maasp") {
-    headers = ["Well ID", "Date", "Measured", "MAASP", "Exceedance"];
-    data = [];
-    let wellsToCheck = filterWells().map(w => w.id);
-    const fDateFrom = document.getElementById('filterDateFrom')?.value;
-    const fDateTo = document.getElementById('filterDateTo')?.value;
-
-    wellsToCheck.forEach(wellId => {
-      let arr = (window.allMaaspData && window.allMaaspData[wellId]) || [];
-      arr.forEach(row => {
-        if (
-          (!fDateFrom || row.date >= fDateFrom) &&
-          (!fDateTo || row.date <= fDateTo)
-        ) {
-          data.push([
-            wellId, row.date, row.measured, row.maasp,
-            parseFloat(row.measured) > parseFloat(row.maasp) ? "Yes" : "No"
-          ]);
-        }
-      });
-    });
-  } else if (type === "audit") {
-    headers = ["Well ID", "Deviation Title", "Action", "User", "Timestamp", "Details"];
-    data = [];
-    filterDeviations().forEach(d => {
-      if (Array.isArray(d.auditLog)) {
-        d.auditLog.forEach(log => {
-          data.push([
-            d.wellId || "N/A",
-            (d.title || "").slice(0, 40) + ((d.title || "").length > 40 ? "..." : ""),
-            log.action, log.user, new Date(log.timestamp).toLocaleString(), log.details || ""
-          ]);
-        });
-      }
-    });
-  } else if (type === "valveTestDetail") {
-    // Basic valve test details (original functionality)
-    headers = [
-      "Well ID", "Valve ID",
-      "Output Leak Rate (scfm)", "Allowable Leak Rate (scfm)", 
-      "Test Valid?", "Leak Rate Pass?", "Overall API Result", "Warnings"
-    ];
-    data = generateValveTestData();
-  } else if (type === "valveTestComprehensive") {
-    // Enhanced comprehensive valve test analysis
-    return generateComprehensiveTestReport();
-  } else if (type === "wellIntegrityReport") {
-    // Full well integrity assessment
-    return generateWellIntegrityReport();
-  } else if (type === "custom") {
-    headers = ["Well ID", "Open Deviation Count"];
-    let counts = {};
-    (window.deviations || []).filter(d => d.status === 'open' || d.status === 'dispensation_requested').forEach(d => {
-      const well = d.wellId || "Unknown Well";
-      counts[well] = (counts[well] || 0) + 1;
-    });
-    data = Object.entries(counts).map(([wellId, count]) => [wellId, count]);
-    renderDeviationBarChart(counts);
-  }
-
-  lastReportHeaders = headers;
-  lastReportData = data;
-  renderReportTable(headers, data);
-
-  document.getElementById('exportCSVBtn').style.display = data.length ? '' : 'none';
-  document.getElementById('exportPDFBtn').style.display = data.length ? '' : 'none';
-  document.getElementById('exportHTMLBtn').style.display = data.length ? '' : 'none';
+  
+  // Store the three-table data for exports
+  const { wellInfoData, initialConditionsData, finalConditionsData } = processDataForTwoTables();
+  lastWellInfoData = wellInfoData;
+  lastInitialConditionsData = initialConditionsData;
+  lastFinalConditionsData = finalConditionsData;
+  lastReportSummary = reportSummary;
+  
+  // Store old format for backward compatibility
+  lastReportData = reportData;
+  lastReportHeaders = reportHeaders;
+  
+  // Display enhanced report
+  displayEnhancedReport(reportData, reportHeaders, reportType, reportSummary);
+  
+  // Enable export buttons
+  document.getElementById('exportPdfBtn').disabled = false;
+  document.getElementById('exportCsvBtn').disabled = false;
+  document.getElementById('printReportBtn').disabled = false;
 }
 
-// NEW: Generate valve test data with enhanced filtering
-function generateValveTestData() {
+
+/**
+ * Get current filter values
+ */
+function getFilterValues() {
+  return {
+    well: document.getElementById('wellFilter')?.value || '',
+    valveType: document.getElementById('valveTypeFilter')?.value || '',
+    testStatus: document.getElementById('testStatusFilter')?.value || '',
+    severityFilter: document.getElementById('severityFilter')?.value || '',
+    includeCompliance: document.getElementById('includeCompliance')?.checked || false,
+    includeRecommendations: document.getElementById('includeRecommendations')?.checked || false,
+    includeSummaryStats: document.getElementById('includeSummaryStats')?.checked || false,
+    includeCalculations: document.getElementById('includeCalculations')?.checked || false,
+    riskLevel: document.getElementById('riskLevel')?.value || 'basic'
+  };
+}
+
+/**
+ * Determine failure reasons based on test data and valve type
+ */
+function determineFailureReasons(test, valveType) {
+  const reasons = [];
+  
+  // If explicit failure_reasons exist, use them
+  if (test.failure_reasons && Array.isArray(test.failure_reasons) && test.failure_reasons.length > 0) {
+    return test.failure_reasons;
+  }
+  
+  // Otherwise, analyze the test data to determine failure reasons
+  
+  // Check leak rate failure
+  if (test.leakRate && test.criticalRate && test.leakRate > test.criticalRate) {
+    reasons.push(`Leak rate too high: ${test.leakRate.toFixed(3)} scfm exceeds critical rate of ${test.criticalRate.toFixed(3)} scfm`);
+  } else if (test.leak_rate_pass === false) {
+    reasons.push('Leak rate test failed');
+  }
+  
+  // Check pressure drop issues
+  if (test.Pa && test.Pf && (test.Pa - test.Pf) > 500) {
+    reasons.push(`Excessive pressure drop: ${(test.Pa - test.Pf).toFixed(1)} psi`);
+  }
+  
+  // Check if test was marked as invalid
+  if (test.test_valid === false) {
+    reasons.push('Test marked as invalid');
+  }
+  
+  // Check general pass/fail status
+  if (test.pass === false && reasons.length === 0) {
+    reasons.push('Test failed validation criteria');
+  }
+  
+  // Check valve-specific issues based on valve type
+  if (valveType === 'SCSSV') {
+    if (test.leakRate && test.leakRate > 0.1) {
+      reasons.push('SCSSV excessive leakage - potential safety hazard');
+    }
+  }
+  
+  // If we still have no specific reasons but the test failed
+  if (reasons.length === 0) {
+    if (test.status === 'fail') {
+      reasons.push('Test status marked as failed');
+    } else {
+      reasons.push('Failure criteria met but reason undetermined');
+    }
+  }
+  
+  return reasons;
+}
+
+/**
+ * Enhanced valve test results report
+ */
+function generateEnhancedValveTestResultsReport(filters) {
+  const headers = ['Well Name', 'Valve Type', 'Status', 'Leak Rate (scfm)', 'Critical Rate (scfm)', 'Failure Reasons'];
   const data = [];
-  const fWell = document.getElementById('filterVtdWell')?.value.toLowerCase() || '';
-  const fValve = document.getElementById('filterVtdValve')?.value.toLowerCase() || '';
-  const fResult = document.getElementById('filterTestResult')?.value || '';
-  const fDateFrom = document.getElementById('filterTestDateFrom')?.value;
-  const fDateTo = document.getElementById('filterTestDateTo')?.value;
-
-  for (const wellId in window.valveTestResults) {
-    if (fWell && wellId.toLowerCase().indexOf(fWell) === -1) continue;
-    const wellData = window.valveTestResults[wellId];
+  const summary = { total: 0, passed: 0, failed: 0, criticalFailures: 0 };
+  
+  const testResults = window.valveTestResults || {};
+  
+  for (const [wellKey, valveResults] of Object.entries(testResults)) {
+    const well = (window.wells || []).find(w => w.id === wellKey || w.name === wellKey);
+    const wellId = well?.id || wellKey;
+    const wellName = well?.name || wellKey;
     
-    for (const valveId in wellData) {
-      if (fValve && valveId.toLowerCase().indexOf(fValve) === -1) continue;
+    if (filters.well && wellId !== filters.well && wellName !== filters.well) continue;
+    
+    for (const [valveId, tests] of Object.entries(valveResults)) {
+      const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+      const valveType = valveInfo?.name || 'Unknown';
       
-      const tests = Array.isArray(wellData[valveId]) ? wellData[valveId] : [wellData[valveId]];
+      if (filters.valveType && valveType !== filters.valveType) continue;
       
-      tests.forEach(result => {
-        if (!result) return;
-
-        // Apply result filter
-        if (fResult === 'pass' && !result.pass) return;
-        if (fResult === 'fail' && result.pass) return;
-
-        // Apply date filter
-        if (fDateFrom && result.test_date && result.test_date < fDateFrom) return;
-        if (fDateTo && result.test_date && result.test_date > fDateTo) return;
-
-        const allowableRate = (window.VALVE_LIMITS && window.VALVE_LIMITS[valveId] && window.VALVE_LIMITS[valveId].critical_rate !== undefined)
-                              ? Number(window.VALVE_LIMITS[valveId].critical_rate).toFixed(3)
-                              : "N/A";
-        const actualLeakRate = result.leak_rate_scfm !== undefined ? Number(result.leak_rate_scfm).toFixed(3) : "N/A";
-        const overallApiResult = (result.pass && result.test_valid && result.leak_rate_pass) ? "Pass" : "Fail";
-        const warningsArray = (window.valveTestWarnings && window.valveTestWarnings[wellId] && window.valveTestWarnings[wellId][valveId]) || (result.failure_reasons || []);
-        const warningsStr = warningsArray.length > 0 ? warningsArray.join('; ') : "None";
-
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      
+      testArray.forEach(test => {
+        if (!test || typeof test !== 'object') return;
+        
+        if (filters.testStatus && test.status !== filters.testStatus) return;
+        
+        summary.total++;
+        if (test.status === 'pass') summary.passed++;
+        else summary.failed++;
+        
+        // Determine failure reasons for failed tests
+        let formattedFailures = 'No failures detected';
+        
+        if (test.status === 'fail' || test.pass === false || test.test_valid === false || test.leak_rate_pass === false) {
+          const failureReasons = determineFailureReasons(test, valveType);
+          formattedFailures = failureReasons.length > 0 ? failureReasons.join('; ') : 'Test failed - reason undetermined';
+          
+          if (valveType === 'SCSSV') {
+            summary.criticalFailures++;
+          }
+        }
+        
         data.push([
-          wellId, valveId, actualLeakRate, allowableRate,
-          result.test_valid ? "Yes" : "No", result.leak_rate_pass ? "Yes" : "No",
-          overallApiResult, warningsStr
+          wellName,
+          valveType,
+          test.status === 'pass' ? 'PASS' : 'FAIL',
+          test.leakRate?.toFixed(3) || 'N/A',
+          test.criticalRate?.toFixed(3) || 'N/A',
+          formattedFailures
         ]);
       });
     }
   }
-  return data;
-}
-
-// NEW: Generate comprehensive test report
-function generateComprehensiveTestReport() {
-  try {
-    const wellId = document.getElementById('filterVtdWell')?.value || getFirstAvailableWell();
-    if (!wellId || !window.valveTestResults || !window.valveTestResults[wellId]) {
-      renderError("No test data available for the selected well. Please ensure test data exists and try again.");
-      return;
-    }
-
-    // Use the existing test results report generator
-    if (window.testResultsReportGenerator) {
-      const reportData = window.testResultsReportGenerator.generateTestResultsReport(wellId);
-      renderComprehensiveTestReportHTML(reportData);
-      
-      // Show export buttons
-      document.getElementById('exportCSVBtn').style.display = '';
-      document.getElementById('exportPDFBtn').style.display = '';
-      document.getElementById('exportHTMLBtn').style.display = '';
-      
-      // Store data for exports
-      lastReportHeaders = ["Section", "Details"];
-      lastReportData = [
-        ["Executive Summary", `Status: ${reportData.executiveSummary.wellStatus}, Pass Rate: ${reportData.executiveSummary.passRate}`],
-        ["Total Tests", reportData.executiveSummary.totalTests],
-        ["Critical Failures", reportData.executiveSummary.criticalFailures],
-        ["Recommendations", reportData.recommendations.length + " action items"]
-      ];
-    } else {
-      renderError("Test results report generator not available. Please ensure all required scripts are loaded.");
-    }
-  } catch (error) {
-    console.error('Error generating comprehensive test report:', error);
-    renderError("Error generating comprehensive test report: " + error.message);
-  }
-}
-
-// NEW: Generate well integrity report
-function generateWellIntegrityReport() {
-  const wellId = document.getElementById('filterVtdWell')?.value || getFirstAvailableWell();
-  if (!wellId) {
-    renderError("Please specify a well ID for the integrity assessment.");
-    return;
-  }
-
-  try {
-    if (window.testResultsReportGenerator) {
-      const reportData = window.testResultsReportGenerator.generateTestResultsReport(wellId);
-      renderWellIntegrityReportHTML(reportData);
-      
-      // Show export buttons
-      document.getElementById('exportCSVBtn').style.display = '';
-      document.getElementById('exportPDFBtn').style.display = '';
-      document.getElementById('exportHTMLBtn').style.display = '';
-    } else {
-      renderError("Well integrity report generator not available.");
-    }
-  } catch (error) {
-    console.error('Error generating well integrity report:', error);
-    renderError("Error generating well integrity report: " + error.message);
-  }
-}
-
-// NEW: Render comprehensive test report HTML
-function renderComprehensiveTestReportHTML(reportData) {
-  const html = `
-    <div class="comprehensive-test-report">
-      <div class="report-header">
-        <h2>Comprehensive Test Analysis - ${reportData.metadata.wellName}</h2>
-        <div class="report-metadata">
-          <span class="report-date">Generated: ${reportData.metadata.reportDate}</span>
-          <span class="report-number">Report #${reportData.metadata.reportNumber}</span>
-        </div>
-      </div>
-      
-      <div class="executive-summary-card">
-        <h3>Executive Summary</h3>
-        <div class="status-indicator status-${reportData.executiveSummary.wellStatus.toLowerCase().replace(' ', '-')}">
-          ${reportData.executiveSummary.wellStatus}
-        </div>
-        <div class="summary-metrics">
-          <div class="metric">
-            <span class="metric-value">${reportData.executiveSummary.totalTests}</span>
-            <span class="metric-label">Total Tests</span>
-          </div>
-          <div class="metric">
-            <span class="metric-value">${reportData.executiveSummary.passRate}</span>
-            <span class="metric-label">Pass Rate</span>
-          </div>
-          <div class="metric">
-            <span class="metric-value">${reportData.executiveSummary.criticalFailures}</span>
-            <span class="metric-label">Critical Failures</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="test-results-section">
-        <h3>Test Results by Valve</h3>
-        ${reportData.testResultsDetails.map(valve => `
-          <div class="valve-test-card">
-            <div class="valve-header">
-              <h4>${valve.valveName} (${valve.valveId})</h4>
-              <span class="valve-status status-${valve.currentStatus.toLowerCase().replace(' ', '-')}">${valve.currentStatus}</span>
-            </div>
-            <div class="valve-details">
-              <p><strong>Total Tests:</strong> ${valve.testCount} | <strong>Last Test:</strong> ${valve.lastTestDate || 'Not tested'}</p>
-              ${valve.tests.length > 0 ? `
-                <div class="test-history">
-                  ${valve.tests.slice(-3).map(test => `
-                    <div class="test-item ${test.result.toLowerCase()}">
-                      <div class="test-date">${test.testDate}</div>
-                      <div class="test-result">
-                        <span class="traffic-light ${test.trafficLight}"></span>
-                        ${test.result}
-                      </div>
-                      ${test.mitigatingAction ? `<div class="test-action">${test.mitigatingAction}</div>` : ''}
-                    </div>
-                  `).join('')}
-                </div>
-              ` : '<p class="no-tests">No test data available</p>'}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      ${reportData.failureAnalysis.totalFailures > 0 ? `
-        <div class="failure-analysis-section">
-          <h3>Failure Analysis</h3>
-          <div class="failure-summary">
-            <p><strong>Total Failures:</strong> ${reportData.failureAnalysis.totalFailures}</p>
-            <p><strong>Critical Failures:</strong> ${reportData.failureAnalysis.criticalFailures.length}</p>
-          </div>
-          <div class="failure-categories">
-            <h4>Failures by Category:</h4>
-            <ul>
-              ${Object.entries(reportData.failureAnalysis.failuresByCategory).map(([category, count]) => 
-                `<li>${category}: <strong>${count}</strong></li>`
-              ).join('')}
-            </ul>
-          </div>
-        </div>
-      ` : ''}
-
-      <div class="recommendations-section">
-        <h3>Recommendations</h3>
-        ${reportData.recommendations.map(group => `
-          <div class="recommendation-group">
-            <h4>${group.type}</h4>
-            <p class="group-description">${group.description}</p>
-            <ul class="recommendation-list">
-              ${group.items.map(item => `
-                <li class="recommendation-item priority-${item.priority.toLowerCase()}">
-                  <div class="priority-badge">${item.priority}</div>
-                  <div class="recommendation-content">
-                    <div class="recommendation-text">${item.description}</div>
-                    ${item.timeframe ? `<div class="timeframe">Timeframe: ${item.timeframe}</div>` : ''}
-                  </div>
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
-  document.getElementById('reportOutput').innerHTML = html;
-  addComprehensiveReportStyles();
-}
-
-// NEW: Render well integrity report HTML
-function renderWellIntegrityReportHTML(reportData) {
-  const html = `
-    <div class="well-integrity-report">
-      <div class="report-header">
-        <h1>Well Integrity Assessment</h1>
-        <h2>${reportData.metadata.wellName} (${reportData.metadata.wellId})</h2>
-        <div class="report-metadata">
-          <div class="metadata-grid">
-            <div class="metadata-item">
-              <label>Well Type:</label>
-              <span>${reportData.metadata.wellType}</span>
-            </div>
-            <div class="metadata-item">
-              <label>Location:</label>
-              <span>${reportData.metadata.location}</span>
-            </div>
-            <div class="metadata-item">
-              <label>Operator:</label>
-              <span>${reportData.metadata.operator}</span>
-            </div>
-            <div class="metadata-item">
-              <label>Report Date:</label>
-              <span>${reportData.metadata.reportDate}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="integrity-status-overview">
-        <div class="status-card">
-          <div class="status-header">
-            <h3>Overall Well Status</h3>
-            <div class="status-badge ${reportData.executiveSummary.wellStatus.toLowerCase().replace(' ', '-')}">
-              ${reportData.executiveSummary.wellStatus}
-            </div>
-          </div>
-          <div class="status-metrics">
-            <div class="metric-grid">
-              <div class="metric">
-                <div class="metric-value">${reportData.executiveSummary.totalValves}</div>
-                <div class="metric-label">Valves Monitored</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">${reportData.executiveSummary.passRate}</div>
-                <div class="metric-label">Overall Pass Rate</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">${reportData.executiveSummary.criticalFailures}</div>
-                <div class="metric-label">Critical Issues</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">${reportData.executiveSummary.lastTestDate}</div>
-                <div class="metric-label">Last Test Date</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="integrity-assessment-details">
-        <h3>Detailed Integrity Assessment</h3>
-        ${reportData.testResultsDetails.map(valve => `
-          <div class="valve-integrity-card">
-            <div class="valve-header">
-              <h4>${valve.valveName}</h4>
-              <div class="valve-status-indicator">
-                <span class="status-light ${getStatusLight(valve.currentStatus)}"></span>
-                <span class="status-text">${valve.currentStatus}</span>
-              </div>
-            </div>
-            <div class="integrity-details">
-              <div class="test-summary">
-                <strong>Test Summary:</strong> ${valve.testCount} tests performed
-                ${valve.lastTestDate ? ` | Last tested: ${valve.lastTestDate}` : ''}
-              </div>
-              ${valve.tests.length > 0 ? `
-                <div class="latest-test-details">
-                  <h5>Latest Test Results:</h5>
-                  ${(() => {
-                    const latestTest = valve.tests[valve.tests.length - 1];
-                    return `
-                      <div class="test-result-grid">
-                        <div class="result-item">
-                          <label>Result:</label>
-                          <span class="result-badge ${latestTest.result.toLowerCase()}">${latestTest.result}</span>
-                        </div>
-                        <div class="result-item">
-                          <label>Test Pressure:</label>
-                          <span>${latestTest.testPressure}</span>
-                        </div>
-                        <div class="result-item">
-                          <label>Pressure Drop:</label>
-                          <span>${latestTest.pressureDrop}</span>
-                        </div>
-                        <div class="result-item">
-                          <label>Leak Rate:</label>
-                          <span>${latestTest.leakRate}</span>
-                        </div>
-                      </div>
-                      ${latestTest.mitigatingAction ? `
-                        <div class="mitigation-action">
-                          <strong>Required Action:</strong> ${latestTest.mitigatingAction}
-                        </div>
-                      ` : ''}
-                    `;
-                  })()}
-                </div>
-              ` : '<div class="no-test-data">No test data available for integrity assessment</div>'}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      ${reportData.recommendations.length > 0 ? `
-        <div class="integrity-recommendations">
-          <h3>Integrity Management Recommendations</h3>
-          ${reportData.recommendations.map(group => `
-            <div class="recommendation-section">
-              <h4 class="recommendation-type">${group.type}</h4>
-              <p class="recommendation-description">${group.description}</p>
-              <div class="recommendation-items">
-                ${group.items.map(item => `
-                  <div class="recommendation-card priority-${item.priority.toLowerCase()}">
-                    <div class="priority-indicator">
-                      <span class="priority-label">${item.priority}</span>
-                      ${item.timeframe ? `<span class="timeframe">${item.timeframe}</span>` : ''}
-                    </div>
-                    <div class="recommendation-text">${item.description}</div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-
-      <div class="report-footer">
-        <p>This report was generated by the Well Integrity Management System on ${reportData.metadata.reportDate} at ${reportData.metadata.reportTime}.</p>
-        <p><strong>Note:</strong> This assessment is based on available test data and should be reviewed by qualified personnel.</p>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('reportOutput').innerHTML = html;
-  addWellIntegrityReportStyles();
-}
-
-// NEW: Helper functions
-function getFirstAvailableWell() {
-  if (window.valveTestResults) {
-    return Object.keys(window.valveTestResults)[0];
-  }
-  if (window.wells && window.wells.length > 0) {
-    return window.wells[0].id;
-  }
-  return null;
-}
-
-function getStatusLight(status) {
-  const statusMap = {
-    'PASS': 'green',
-    'SATISFACTORY': 'green',
-    'ATTENTION REQUIRED': 'yellow',
-    'HIGH PRIORITY FAILURE': 'orange',
-    'CRITICAL FAILURE': 'red',
-    'FAILURE': 'red',
-    'NOT TESTED': 'gray'
-  };
-  return statusMap[status] || 'gray';
-}
-
-function renderError(message) {
-  document.getElementById('reportOutput').innerHTML = `
-    <div class="error-message">
-      <div class="error-icon">⚠️</div>
-      <h3>Report Generation Error</h3>
-      <p>${message}</p>
-    </div>
-  `;
-}
-
-function getCurrentFilters() {
-  const filters = {};
-  const type = document.getElementById('reportTypeSelect')?.value;
-  filters.reportType = type;
   
-  // Collect all filter values
-  document.querySelectorAll('#reportFiltersAccordionContainer input, #reportFiltersAccordionContainer select').forEach(input => {
-    if (input.id && input.value) {
-      filters[input.id] = input.value;
-    }
-  });
+  return { data, headers, summary };
+}
+
+/**
+ * Enhanced test failure summary report
+ */
+function generateEnhancedTestFailureSummaryReport(filters) {
+  const headers = ['Well Name', 'Valve Type', 'Failure Severity', 'Primary Failure Reason', 'Secondary Issues', 'Leak Rate (scfm)', 'Recommended Action'];
+  const data = [];
+  const summary = { totalFailures: 0, criticalFailures: 0, majorFailures: 0, minorFailures: 0 };
   
-  return filters;
-}
-
-// NEW: Export as HTML function
-function exportCurrentReportHTML() {
-  if (lastReportType === 'valveTestComprehensive' || lastReportType === 'wellIntegrityReport') {
-    // Export the comprehensive report as standalone HTML
-    const reportContent = document.getElementById('reportOutput').innerHTML;
-    const fullHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Well Integrity Report - ${new Date().toLocaleDateString()}</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #f5f5f5; }
-        .comprehensive-test-report, .well-integrity-report { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .report-header h1, .report-header h2 { color: #2c3e50; margin: 0 0 10px 0; }
-        .status-indicator, .status-badge { padding: 8px 16px; border-radius: 20px; font-weight: bold; color: white; display: inline-block; }
-        .status-satisfactory { background-color: #27ae60; }
-        .status-attention-required { background-color: #f39c12; }
-        .status-critical { background-color: #e74c3c; }
-        .metric { text-align: center; padding: 15px; margin: 10px; background: #ecf0f1; border-radius: 5px; }
-        .metric-value { font-size: 2em; font-weight: bold; color: #3498db; display: block; }
-        .metric-label { color: #7f8c8d; font-size: 0.9em; }
-        .valve-test-card, .valve-integrity-card { border: 1px solid #bdc3c7; margin: 15px 0; border-radius: 5px; background: #fafafa; }
-        .valve-header { background: #34495e; color: white; padding: 15px; border-radius: 5px 5px 0 0; }
-        .traffic-light { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-        .traffic-light.green { background-color: #27ae60; }
-        .traffic-light.yellow { background-color: #f1c40f; }
-        .traffic-light.orange { background-color: #e67e22; }
-        .traffic-light.red { background-color: #e74c3c; }
-        .recommendation-card { border-left: 4px solid #3498db; padding: 15px; margin: 10px 0; background: white; border-radius: 0 5px 5px 0; }
-        .priority-critical { border-left-color: #e74c3c; }
-        .priority-high { border-left-color: #e67e22; }
-        .priority-medium { border-left-color: #f39c12; }
-        .priority-low { border-left-color: #27ae60; }
-        .report-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #bdc3c7; color: #7f8c8d; font-size: 0.9em; }
-        @media print { body { background: white; } .comprehensive-test-report, .well-integrity-report { box-shadow: none; } }
-    </style>
-</head>
-<body>
-    ${reportContent}
-</body>
-</html>`;
+  const testResults = window.valveTestResults || {};
+  
+  for (const [wellKey, valveResults] of Object.entries(testResults)) {
+    const well = (window.wells || []).find(w => w.id === wellKey || w.name === wellKey);
+    const wellId = well?.id || wellKey;
+    const wellName = well?.name || wellKey;
     
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `well-integrity-report-${Date.now()}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } else {
-    // Export regular table report as HTML
-    const tableHtml = document.getElementById('reportOutput').innerHTML;
-    const fullHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Well Integrity Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-    </style>
-</head>
-<body>
-    <h1>Well Integrity Management Report</h1>
-    <p>Generated on: ${new Date().toLocaleString()}</p>
-    ${tableHtml}
-</body>
-</html>`;
+    if (filters.well && wellId !== filters.well && wellName !== filters.well) continue;
     
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `report-${Date.now()}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-}
-
-// Add comprehensive report styles
-function addComprehensiveReportStyles() {
-  if (!document.getElementById('comprehensiveReportStyles')) {
-    const style = document.createElement('style');
-    style.id = 'comprehensiveReportStyles';
-    style.innerHTML = `
-      .comprehensive-test-report {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 100%;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .report-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px;
-        text-align: center;
-      }
-      .report-header h2 {
-        margin: 0;
-        font-size: 1.8em;
-        font-weight: 300;
-      }
-      .report-metadata {
-        margin-top: 15px;
-        opacity: 0.9;
-      }
-      .report-metadata span {
-        margin: 0 15px;
-        font-size: 0.9em;
-      }
-      .executive-summary-card {
-        padding: 30px;
-        background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-      }
-      .executive-summary-card h3 {
-        margin: 0 0 20px 0;
-        color: #495057;
-      }
-      .status-indicator {
-        font-size: 1.2em;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 25px;
-        display: inline-block;
-        margin-bottom: 20px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      .status-satisfactory {
-        background: linear-gradient(135deg, #28a745, #20c997);
-        color: white;
-      }
-      .status-attention-required {
-        background: linear-gradient(135deg, #ffc107, #fd7e14);
-        color: #212529;
-      }
-      .status-critical {
-        background: linear-gradient(135deg, #dc3545, #e83e8c);
-        color: white;
-      }
-      .summary-metrics {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 20px;
-        margin-top: 20px;
-      }
-      .metric {
-        text-align: center;
-        padding: 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      }
-      .metric-value {
-        font-size: 2.5em;
-        font-weight: 700;
-        color: #6f42c1;
-        display: block;
-      }
-      .metric-label {
-        color: #6c757d;
-        font-size: 0.9em;
-        margin-top: 5px;
-      }
-      .test-results-section {
-        padding: 30px;
-      }
-      .test-results-section h3 {
-        color: #495057;
-        margin-bottom: 25px;
-        border-bottom: 2px solid #6f42c1;
-        padding-bottom: 10px;
-      }
-      .valve-test-card {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      .valve-header {
-        background: linear-gradient(135deg, #495057, #6c757d);
-        color: white;
-        padding: 15px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .valve-header h4 {
-        margin: 0;
-        font-size: 1.1em;
-      }
-      .valve-status {
-        font-size: 0.9em;
-        padding: 4px 12px;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.2);
-      }
-      .valve-details {
-        padding: 20px;
-      }
-      .test-history {
-        margin-top: 15px;
-      }
-      .test-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px;
-        margin: 5px 0;
-        border-radius: 5px;
-        background: #f8f9fa;
-      }
-      .test-item.pass {
-        border-left: 4px solid #28a745;
-      }
-      .test-item.fail {
-        border-left: 4px solid #dc3545;
-      }
-      .traffic-light {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-      }
-      .traffic-light.green { background-color: #28a745; }
-      .traffic-light.yellow { background-color: #ffc107; }
-      .traffic-light.orange { background-color: #fd7e14; }
-      .traffic-light.red { background-color: #dc3545; }
-      .failure-analysis-section, .recommendations-section {
-        padding: 30px;
-        background: #f8f9fa;
-      }
-      .recommendations-section h3, .failure-analysis-section h3 {
-        color: #495057;
-        margin-bottom: 25px;
-        border-bottom: 2px solid #6f42c1;
-        padding-bottom: 10px;
-      }
-      .recommendation-group {
-        margin-bottom: 30px;
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      .recommendation-group h4 {
-        color: #6f42c1;
-        margin: 0 0 10px 0;
-      }
-      .recommendation-list {
-        list-style: none;
-        padding: 0;
-        margin: 15px 0 0 0;
-      }
-      .recommendation-item {
-        display: flex;
-        align-items: flex-start;
-        padding: 15px;
-        margin: 10px 0;
-        border-radius: 5px;
-        border-left: 4px solid #6c757d;
-        background: #f8f9fa;
-      }
-      .recommendation-item.priority-critical {
-        border-left-color: #dc3545;
-        background: #f8d7da;
-      }
-      .recommendation-item.priority-high {
-        border-left-color: #fd7e14;
-        background: #fff3cd;
-      }
-      .recommendation-item.priority-medium {
-        border-left-color: #ffc107;
-        background: #fff3cd;
-      }
-      .recommendation-item.priority-standard {
-        border-left-color: #28a745;
-        background: #d4edda;
-      }
-      .priority-badge {
-        background: #6c757d;
-        color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: 600;
-        margin-right: 15px;
-        min-width: 70px;
-        text-align: center;
-      }
-      .recommendation-item.priority-critical .priority-badge {
-        background: #dc3545;
-      }
-      .recommendation-item.priority-high .priority-badge {
-        background: #fd7e14;
-      }
-      .recommendation-item.priority-medium .priority-badge {
-        background: #ffc107;
-        color: #212529;
-      }
-      .recommendation-item.priority-standard .priority-badge {
-        background: #28a745;
-      }
-      .recommendation-content {
-        flex: 1;
-      }
-      .timeframe {
-        font-style: italic;
-        color: #6c757d;
-        font-size: 0.9em;
-        margin-top: 5px;
-      }
-      .no-tests {
-        color: #6c757d;
-        font-style: italic;
-        padding: 20px;
-        text-align: center;
-      }
-      .error-message {
-        text-align: center;
-        padding: 40px;
-        color: #721c24;
-        background: #f8d7da;
-        border: 1px solid #f5c6cb;
-        border-radius: 8px;
-      }
-      .error-icon {
-        font-size: 3em;
-        margin-bottom: 15px;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-// Add well integrity report styles
-function addWellIntegrityReportStyles() {
-  if (!document.getElementById('wellIntegrityReportStyles')) {
-    const style = document.createElement('style');
-    style.id = 'wellIntegrityReportStyles';
-    style.innerHTML = `
-      .well-integrity-report {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        max-width: 100%;
-        background: white;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .well-integrity-report .report-header {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        color: white;
-        padding: 40px;
-        text-align: center;
-      }
-      .well-integrity-report .report-header h1 {
-        margin: 0;
-        font-size: 2.2em;
-        font-weight: 300;
-        margin-bottom: 10px;
-      }
-      .well-integrity-report .report-header h2 {
-        margin: 0;
-        font-size: 1.4em;
-        opacity: 0.9;
-        font-weight: 400;
-      }
-      .metadata-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        margin-top: 25px;
-        background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 8px;
-      }
-      .metadata-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 0;
-      }
-      .metadata-item label {
-        font-weight: 600;
-        opacity: 0.8;
-      }
-      .integrity-status-overview {
-        padding: 30px;
-        background: #f8f9fa;
-      }
-      .status-card {
-        background: white;
-        border-radius: 8px;
-        padding: 30px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      }
-      .status-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 25px;
-      }
-      .status-header h3 {
-        margin: 0;
-        color: #2c3e50;
-        font-size: 1.4em;
-      }
-      .well-integrity-report .status-badge {
-        font-size: 1.1em;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 25px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 20px;
-      }
-      .well-integrity-report .metric {
-        text-align: center;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-      }
-      .well-integrity-report .metric-value {
-        font-size: 2.2em;
-        font-weight: 700;
-        color: #3498db;
-        display: block;
-        margin-bottom: 5px;
-      }
-      .well-integrity-report .metric-label {
-        color: #6c757d;
-        font-size: 0.9em;
-        font-weight: 500;
-      }
-      .integrity-assessment-details {
-        padding: 30px;
-      }
-      .integrity-assessment-details h3 {
-        color: #2c3e50;
-        margin-bottom: 25px;
-        border-bottom: 3px solid #3498db;
-        padding-bottom: 10px;
-        font-size: 1.4em;
-      }
-      .valve-integrity-card {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        margin-bottom: 25px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      }
-      .valve-integrity-card .valve-header {
-        background: linear-gradient(135deg, #3498db, #2980b9);
-        color: white;
-        padding: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .valve-integrity-card .valve-header h4 {
-        margin: 0;
-        font-size: 1.2em;
-        font-weight: 500;
-      }
-      .valve-status-indicator {
-        display: flex;
-        align-items: center;
-        background: rgba(255,255,255,0.2);
-        padding: 8px 16px;
-        border-radius: 20px;
-      }
-      .status-light {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-      }
-      .status-light.green { background-color: #27ae60; }
-      .status-light.yellow { background-color: #f1c40f; }
-      .status-light.orange { background-color: #e67e22; }
-      .status-light.red { background-color: #e74c3c; }
-      .status-light.gray { background-color: #95a5a6; }
-      .integrity-details {
-        padding: 25px;
-      }
-      .test-summary {
-        color: #6c757d;
-        margin-bottom: 20px;
-        font-size: 1.05em;
-      }
-      .latest-test-details h5 {
-        color: #2c3e50;
-        margin: 0 0 15px 0;
-        font-size: 1.1em;
-      }
-      .test-result-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
-      }
-      .result-item {
-        background: #f8f9fa;
-        padding: 12px;
-        border-radius: 5px;
-        border-left: 4px solid #3498db;
-      }
-      .result-item label {
-        font-weight: 600;
-        color: #495057;
-        display: block;
-        margin-bottom: 5px;
-        font-size: 0.9em;
-      }
-      .result-badge {
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.9em;
-      }
-      .result-badge.pass {
-        background: #d4edda;
-        color: #155724;
-      }
-      .result-badge.fail {
-        background: #f8d7da;
-        color: #721c24;
-      }
-      .mitigation-action {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 4px solid #ffc107;
-      }
-      .no-test-data {
-        color: #6c757d;
-        font-style: italic;
-        text-align: center;
-        padding: 30px;
-        background: #f8f9fa;
-        border-radius: 5px;
-      }
-      .integrity-recommendations {
-        padding: 30px;
-        background: #f8f9fa;
-      }
-      .integrity-recommendations h3 {
-        color: #2c3e50;
-        margin-bottom: 25px;
-        border-bottom: 3px solid #e74c3c;
-        padding-bottom: 10px;
-        font-size: 1.4em;
-      }
-      .recommendation-section {
-        margin-bottom: 30px;
-        background: white;
-        border-radius: 8px;
-        padding: 25px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      }
-      .recommendation-type {
-        color: #e74c3c;
-        margin: 0 0 10px 0;
-        font-size: 1.2em;
-        font-weight: 600;
-      }
-      .recommendation-description {
-        color: #6c757d;
-        margin-bottom: 20px;
-        font-size: 1.05em;
-      }
-      .recommendation-items {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-      }
-      .recommendation-card {
-        display: flex;
-        align-items: flex-start;
-        padding: 20px;
-        border-radius: 8px;
-        border-left: 5px solid #6c757d;
-        background: #f8f9fa;
-      }
-      .recommendation-card.priority-critical {
-        border-left-color: #e74c3c;
-        background: linear-gradient(90deg, #f8d7da 0%, #f8f9fa 10%);
-      }
-      .recommendation-card.priority-high {
-        border-left-color: #fd7e14;
-        background: linear-gradient(90deg, #fff3cd 0%, #f8f9fa 10%);
-      }
-      .recommendation-card.priority-medium {
-        border-left-color: #ffc107;
-        background: linear-gradient(90deg, #fff3cd 0%, #f8f9fa 10%);
-      }
-      .recommendation-card.priority-standard {
-        border-left-color: #28a745;
-        background: linear-gradient(90deg, #d4edda 0%, #f8f9fa 10%);
-      }
-      .priority-indicator {
-        margin-right: 20px;
-        text-align: center;
-        min-width: 100px;
-      }
-      .priority-label {
-        display: block;
-        font-weight: 600;
-        font-size: 0.9em;
-        padding: 6px 12px;
-        border-radius: 15px;
-        background: #6c757d;
-        color: white;
-        margin-bottom: 5px;
-      }
-      .recommendation-card.priority-critical .priority-label {
-        background: #e74c3c;
-      }
-      .recommendation-card.priority-high .priority-label {
-        background: #fd7e14;
-      }
-      .recommendation-card.priority-medium .priority-label {
-        background: #ffc107;
-        color: #212529;
-      }
-      .recommendation-card.priority-standard .priority-label {
-        background: #28a745;
-      }
-      .well-integrity-report .timeframe {
-        font-size: 0.8em;
-        color: #6c757d;
-        font-style: italic;
-      }
-      .recommendation-text {
-        flex: 1;
-        font-size: 1.05em;
-        line-height: 1.5;
-        color: #495057;
-      }
-      .report-footer {
-        padding: 30px;
-        background: #2c3e50;
-        color: white;
-        text-align: center;
-      }
-      .report-footer p {
-        margin: 5px 0;
-        opacity: 0.9;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-// Keep all existing functions from the original file
-function filterWells() {
-  const fWell = document.getElementById('filterWell')?.value || '';
-  const fCountry = document.getElementById('filterCountry')?.value || '';
-  const fField = document.getElementById('filterField')?.value || '';
-  const fPlatform = document.getElementById('filterPlatform')?.value || '';
-  const fStatus = document.getElementById('filterStatus')?.value || '';
-  const fDateFrom = document.getElementById('filterDateFrom')?.value;
-  const fDateTo = document.getElementById('filterDateTo')?.value;
-
-  return (window.wells || []).filter(w =>
-    (!fWell || w.id === fWell) &&
-    (!fCountry || w.country === fCountry) &&
-    (!fField || w.field === fField) &&
-    (!fPlatform || w.platform === fPlatform) &&
-    (!fStatus || w.status === fStatus) &&
-    (!fDateFrom || (w.lastTest && w.lastTest >= fDateFrom)) &&
-    (!fDateTo || (w.lastTest && w.lastTest <= fDateTo))
-  );
-}
-
-function filterDeviations() {
-  const fWell = document.getElementById('filterDevWell')?.value || '';
-  const fStatus = document.getElementById('filterDevStatus')?.value || '';
-  const fDateFrom = document.getElementById('filterDevDateFrom')?.value;
-  const fDateTo = document.getElementById('filterDevDateTo')?.value;
-
-  return (window.deviations || []).filter(d =>
-    (!fWell || (d.wellId || "N/A") === fWell) &&
-    (!fStatus || (d.status || "draft") === fStatus) &&
-    (!fDateFrom || ( (d.validUntil && d.validUntil >= fDateFrom) || (d.createdAt && d.createdAt.split('T')[0] >= fDateFrom) )) &&
-    (!fDateTo || ( (d.validUntil && d.validUntil <= fDateTo) || (d.createdAt && d.createdAt.split('T')[0] <= fDateTo) ))
-  );
-}
-
-function renderDeviationBarChart(counts) {
-  const container = document.getElementById('customReportChart');
-  if (!container) return;
-  let html = '<h4>Open Deviation Count per Well</h4><ul style="padding:0;">';
-  if (Object.keys(counts).length === 0) {
-    html += '<li style="list-style:none;color:#888;">No open deviations found.</li>';
-  } else {
-    Object.entries(counts).forEach(([wellId, count]) => {
-      html += `<li style="list-style:none;margin:8px 0;">${wellId}: <span style="background:#1976d2;color:#fff;padding:3px 12px;border-radius:3px;">${count}</span></li>`;
-    });
-  }
-  html += '</ul>';
-  container.innerHTML = html;
-}
-
-function renderReportTable(headers, data) {
-  let html = `<table class="report-table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>`;
-  if (!data.length) {
-    html += `<tr><td colspan="${headers.length}" style="text-align:center; color: var(--report-label-color, #495057); padding:20px;">No data found for the selected filters.</td></tr>`;
-  } else {
-    html += data.map(row => `<tr>${row.map(cell => `<td>${cell === undefined || cell === null ? '' : cell}</td>`).join('')}</tr>`).join('');
-  }
-  html += `</tbody></table>`;
-  const reportOutputDiv = document.getElementById('reportOutput');
-  if (reportOutputDiv) {
-      reportOutputDiv.innerHTML = html; 
-  }
-
-  if (!document.getElementById('reportTableStyle')) {
-    const style = document.createElement('style');
-    style.id = 'reportTableStyle';
-    style.innerHTML = `
-      .report-table { width: 100%; border-collapse: collapse; margin-top: 0; font-size: 0.9em; background-color: var(--report-panel-bg); color: var(--report-text-color); }
-      .report-table th, .report-table td { border: 1px solid var(--report-panel-border); padding: 10px 12px; text-align: left; }
-      .report-table th { background-color: var(--report-table-header-bg); color: var(--report-table-header-text-color); font-weight: 600; }
-      .report-table tr:nth-child(even) { background-color: var(--report-table-row-even-bg); }
-      .report-table tr:hover { background-color: var(--report-table-row-hover-bg); }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-function exportCurrentReportCSV() {
-  exportToCsv('report.csv', [lastReportHeaders, ...lastReportData]);
-}
-
-function exportToCsv(filename, rows) {
-  const processRow = row => row.map(cell => {
-    const cellStr = (cell === undefined || cell === null) ? '' : String(cell);
-    return `"${cellStr.replace(/"/g, '""')}"`;
-  }).join(",");
-  const csvContent = rows.map(processRow).join("\n");
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// Enhanced PDF export function
-function exportCurrentReportPDF() {
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    alert("jsPDF library not loaded. Please include jsPDF and jsPDF-AutoTable via CDN in your HTML.");
-    return;
-  }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-
-  if (!doc.autoTable) {
-     alert("jsPDF-AutoTable plugin not loaded. Please ensure it's included AFTER jsPDF in your HTML.");
-     return;
-  }
-
-  const pageMargin = 40;
-  const pageWidth = doc.internal.pageSize.getWidth() - 2 * pageMargin;
-  let currentY = pageMargin;
-
-  // Report Header
-  doc.setFontSize(18);
-  doc.setFont(undefined, 'bold');
-  doc.text("Well Integrity Management Tool - Enhanced Report", pageMargin, currentY);
-  currentY += 25;
-
-  // Report Metadata
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  const reportTypeSelect = document.getElementById('reportTypeSelect');
-  const selectedReportText = reportTypeSelect ? reportTypeSelect.selectedOptions[0].text : "N/A";
-  doc.text(`Report Type: ${selectedReportText}`, pageMargin, currentY);
-  currentY += 15;
-
-  const generatedByUser = (window.currentUser && window.currentUser.username) ? window.currentUser.username : 'System';
-  const generationTime = new Date();
-  doc.text(`Generated by: ${generatedByUser} on ${generationTime.toLocaleString()}`, pageMargin, currentY);
-  currentY += 25;
-
-  const reportType = reportTypeSelect?.value;
-
-  // Handle comprehensive reports differently
-  if (reportType === "valveTestComprehensive" || reportType === "wellIntegrityReport") {
-    try {
-      const wellId = document.getElementById('filterVtdWell')?.value || getFirstAvailableWell();
-      if (wellId && window.testResultsReportGenerator) {
-        const reportData = window.testResultsReportGenerator.generateTestResultsReport(wellId);
+    for (const [valveId, tests] of Object.entries(valveResults)) {
+      const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+      const valveType = valveInfo?.name || 'Unknown';
+      
+      if (filters.valveType && valveType !== filters.valveType) continue;
+      
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      
+      testArray.forEach(test => {
+        if (!test || (test.status === 'pass' && test.pass !== false && test.test_valid !== false && test.leak_rate_pass !== false)) return;
         
-        // Executive Summary
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.text("Executive Summary", pageMargin, currentY);
-        currentY += 20;
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
+        summary.totalFailures++;
         
-        doc.text(`Well Status: ${reportData.executiveSummary.wellStatus}`, pageMargin, currentY);
-        currentY += 15;
-        doc.text(`Total Tests: ${reportData.executiveSummary.totalTests}`, pageMargin, currentY);
-        currentY += 15;
-        doc.text(`Pass Rate: ${reportData.executiveSummary.passRate}`, pageMargin, currentY);
-        currentY += 15;
-        doc.text(`Critical Failures: ${reportData.executiveSummary.criticalFailures}`, pageMargin, currentY);
-        currentY += 25;
-
-        // Test Results Details
-        if (reportData.testResultsDetails && reportData.testResultsDetails.length > 0) {
-          doc.setFontSize(12);
-          doc.setFont(undefined, 'bold');
-          doc.text("Test Results by Valve", pageMargin, currentY);
-          currentY += 20;
-          
-          reportData.testResultsDetails.forEach(valve => {
-            if (currentY > doc.internal.pageSize.getHeight() - 100) {
-              doc.addPage();
-              currentY = pageMargin;
-            }
-            
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text(`${valve.valveName} (${valve.valveId}) - Status: ${valve.currentStatus}`, pageMargin, currentY);
-            currentY += 18;
-            
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.text(`Total Tests: ${valve.testCount} | Last Test: ${valve.lastTestDate || 'Not tested'}`, pageMargin, currentY);
-            currentY += 15;
-            
-            if (valve.tests && valve.tests.length > 0) {
-              const latestTest = valve.tests[valve.tests.length - 1];
-              doc.text(`Latest Result: ${latestTest.result} | Test Pressure: ${latestTest.testPressure}`, pageMargin, currentY);
-              currentY += 12;
-              if (latestTest.mitigatingAction) {
-                const actionLines = doc.splitTextToSize(`Action Required: ${latestTest.mitigatingAction}`, pageWidth - 20);
-                doc.text(actionLines, pageMargin + 10, currentY);
-                currentY += actionLines.length * 10 + 10;
-              }
-            }
-            currentY += 10;
-          });
-        }
-
-        // Recommendations
-        if (reportData.recommendations && reportData.recommendations.length > 0) {
-          if (currentY > doc.internal.pageSize.getHeight() - 150) {
-            doc.addPage();
-            currentY = pageMargin;
-          }
-          
-          doc.setFontSize(12);
-          doc.setFont(undefined, 'bold');
-          doc.text("Recommendations", pageMargin, currentY);
-          currentY += 20;
-          
-          reportData.recommendations.forEach(group => {
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text(group.type, pageMargin, currentY);
-            currentY += 15;
-            
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            const descLines = doc.splitTextToSize(group.description, pageWidth - 20);
-            doc.text(descLines, pageMargin, currentY);
-            currentY += descLines.length * 10 + 10;
-            
-            group.items.forEach(item => {
-              if (currentY > doc.internal.pageSize.getHeight() - 50) {
-                doc.addPage();
-                currentY = pageMargin;
-              }
-              
-              doc.setFont(undefined, 'bold');
-              doc.text(`${item.priority}:`, pageMargin + 10, currentY);
-              doc.setFont(undefined, 'normal');
-              const itemLines = doc.splitTextToSize(item.description, pageWidth - 60);
-              doc.text(itemLines, pageMargin + 60, currentY);
-              currentY += Math.max(itemLines.length * 10, 12);
-              
-              if (item.timeframe) {
-                doc.setFont(undefined, 'italic');
-                doc.text(`Timeframe: ${item.timeframe}`, pageMargin + 20, currentY);
-                currentY += 12;
-                doc.setFont(undefined, 'normal');
-              }
-              currentY += 5;
-            });
-            currentY += 10;
-          });
-        }
-      } else {
-        doc.text("No comprehensive test data available for PDF export.", pageMargin, currentY);
-      }
-    } catch (error) {
-      console.error('Error generating comprehensive PDF:', error);
-      doc.text("Error generating comprehensive report data.", pageMargin, currentY);
-    }
-  } else if (reportType === "deviations") {
-    // Keep existing deviations logic
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text("Deviations & Dispensations Summary", pageMargin, currentY);
-    currentY += 20;
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-
-    if (!lastReportData || lastReportData.length === 0) {
-      doc.text("No deviations found for the selected filters.", pageMargin, currentY);
-    } else {
-      const filteredDeviations = filterDeviations();
-
-      filteredDeviations.forEach((dev) => {
-        if (currentY > doc.internal.pageSize.getHeight() - 130) { 
-            doc.addPage();
-            currentY = pageMargin;
-        }
+        // Get actual failure reasons
+        const failureReasons = determineFailureReasons(test, valveType);
         
-        let wellIdForTitle = dev.wellId || 'N/A';
-        if ((!dev.wellId || dev.wellId === 'N/A') && dev.description) {
-            const descLinesForWellId = (dev.description || "").split('\n');
-            const wellLine = descLinesForWellId.find(line => line.toLowerCase().startsWith('well:'));
-            if (wellLine) {
-                wellIdForTitle = wellLine.split(':')[1]?.trim() || 'N/A';
-            }
-        }
-        const titleWellMatch = (dev.title || "").match(/on Well\s*([^\s(]+)/i);
-        if (titleWellMatch && titleWellMatch[1]) {
-            wellIdForTitle = titleWellMatch[1];
-        }
-
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'bold');
-        let displayTitle = dev.title || 'Untitled Deviation';
-        if (wellIdForTitle !== 'N/A' && !displayTitle.toLowerCase().includes(wellIdForTitle.toLowerCase())) {
-             displayTitle = `${displayTitle} on Well ${wellIdForTitle}`;
-        } else if (wellIdForTitle === 'N/A' && displayTitle.toLowerCase().includes("on well")) {
-            displayTitle = displayTitle.replace(/on Well\s*[^\s(]+/i, 'on an Unspecified Well');
-        }
-        displayTitle = displayTitle.replace(/\(Well: N\/A\)/i, '').trim();
-        if (wellIdForTitle !== 'N/A' && !displayTitle.toLowerCase().includes(`well ${wellIdForTitle.toLowerCase()}`)) {
-             displayTitle += ` (Well: ${wellIdForTitle})`;
-        }
-
-        doc.text(`Deviation: ${displayTitle}`, pageMargin, currentY);
-        currentY += 18;
-
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
+        // Determine failure severity based on valve type and failure reasons
+        let severity = 'Minor';
+        let recommendedAction = 'Monitor and retest within 30 days';
         
-        let detailsText = `Status: ${dev.status || 'N/A'}. Valid Until: ${dev.validUntil || 'N/A'}. Created: ${dev.createdAt ? new Date(dev.createdAt).toLocaleDateString() : 'N/A'}.`;
-        doc.text(detailsText, pageMargin, currentY);
-        currentY += 16;
-
-        doc.setFont(undefined, 'bold');
-        doc.text("Details of Deviation:", pageMargin, currentY);
-        currentY += 14;
-        doc.setFont(undefined, 'normal');
-
-        const descriptionStr = dev.description || "";
-        let narrative = [];
-        const isValveFailureTest = dev.title && dev.title.toLowerCase().includes("valve") && dev.title.toLowerCase().includes("failed integrity test");
-
-        if (isValveFailureTest) {
-            const lines = descriptionStr.split('\n');
-            const details = {};
-            lines.forEach(line => {
-                const parts = line.split(':');
-                if (parts.length === 2) {
-                    const key = parts[0].trim().toLowerCase().replace(/\s+/g, '');
-                    details[key] = parts[1].trim();
-                }
-            });
-
-            const valveId = details['valve'] || 'Unknown Valve';
-            const wellIdDesc = details['well'] || wellIdForTitle; 
-            const leakRate = details['leakrate'];
-            const allowableRate = details['allowablerate'];
-            const warnings = details['warnings'];
-            let overallTestFailed = true;
-            let failureReason = "";
-
-            narrative.push(`An integrity test was performed on ${valveId} located on ${wellIdDesc}.`);
-            
-            if (leakRate && allowableRate) {
-                const leakRateNum = parseFloat(leakRate);
-                const allowableRateNum = parseFloat(allowableRate);
-                if (!isNaN(leakRateNum) && !isNaN(allowableRateNum)) {
-                    narrative.push(`The test recorded a leak rate of ${leakRateNum} scfm against an allowable rate of ${allowableRateNum} scfm.`);
-                    if (leakRateNum > allowableRateNum) {
-                        failureReason = `the recorded leak rate exceeded the allowable limit.`;
-                    } else {
-                        narrative.push(`The recorded leak rate was within the acceptable limits.`);
-                        if (warnings) {
-                            failureReason = `the test encountered issues: "${warnings}".`;
-                        } else {
-                           failureReason = `the test was marked as failed due to other unpecified integrity concerns.`;
-                        }
-                    }
-                } else {
-                    narrative.push(`Leak rate data (Measured: ${leakRate || 'N/A'}, Allowable: ${allowableRate || 'N/A'}) could not be fully numerically interpreted.`);
-                    if (warnings) failureReason = `the test encountered issues: "${warnings}".`;
-                    else failureReason = `the test was marked as failed due to data interpretation issues or other integrity concerns.`;
-                }
-            } else {
-                 narrative.push(`Specific leak rate data was not fully detailed for direct comparison.`);
-                 if (warnings) failureReason = `the test encountered issues: "${warnings}".`;
-                 else failureReason = `the test was marked as failed due to incomplete data or other integrity concerns.`;
-            }
-
-            if (overallTestFailed) {
-                if (failureReason) {
-                    narrative.push(`The integrity test is considered FAILED because ${failureReason}`);
-                } else if (warnings) {
-                     narrative.push(`The integrity test is considered FAILED due to the following issues: "${warnings}".`);
-                } else {
-                    narrative.push(`The integrity test is considered FAILED based on the deviation title, though specific reasons beyond the title were not fully parsed from the description.`);
-                }
-            }
-
+        if (valveType === 'SCSSV') {
+          severity = 'Critical';
+          summary.criticalFailures++;
+          recommendedAction = 'IMMEDIATE ACTION REQUIRED - Shut in well and repair valve';
+        } else if (failureReasons.some(r => r.toLowerCase().includes('leak rate') && r.toLowerCase().includes('exceeds'))) {
+          severity = 'Major';
+          summary.majorFailures++;
+          recommendedAction = 'Schedule maintenance within 7 days';
+        } else if (failureReasons.some(r => r.toLowerCase().includes('pressure'))) {
+          severity = 'Major';
+          summary.majorFailures++;
+          recommendedAction = 'Schedule maintenance within 7 days';
         } else {
-            narrative.push("The following details were provided for this deviation:");
-            const descLines = doc.splitTextToSize(descriptionStr || "No specific details provided.", pageWidth - 20);
-            descLines.forEach(line => narrative.push(`  ${line}`));
+          summary.minorFailures++;
         }
         
-        narrative.forEach(sentence => {
-            const sentenceLines = doc.splitTextToSize(sentence, pageWidth - 10);
-            doc.text(sentenceLines, pageMargin + 5, currentY);
-            currentY += sentenceLines.length * 10 + 4;
-        });
-        currentY += 10;
-
-        if (dev.type === 'dispensation' && dev.dispensationDetails) { 
-            doc.setFont(undefined, 'italic');
-            doc.text("Dispensation Details:", pageMargin, currentY);
-            currentY += 12;
-            const dispDetailsText = `Dispensation requested by ${dev.dispensationDetails.requestedBy || 'N/A'} on ${dev.dispensationDetails.requestDate || 'N/A'}. Proposed controls: ${dev.dispensationDetails.controls || 'N/A'}. Valid until: ${dev.dispensationDetails.validUntil || 'N/A'}.`;
-            const dispLines = doc.splitTextToSize(dispDetailsText, pageWidth - 20);
-            doc.text(dispLines, pageMargin + 10, currentY);
-            currentY += dispLines.length * 10 + 10;
-            doc.setFont(undefined, 'normal');
-        }
-        currentY += 10;
+        // Apply severity filter
+        const severityMap = { 'critical': 'Critical', 'major': 'Major', 'minor': 'Minor' };
+        if (filters.severityFilter && severity !== severityMap[filters.severityFilter]) return;
+        
+        const primaryFailure = failureReasons[0] || 'Test failed - reason undetermined';
+        const secondaryIssues = failureReasons.length > 1 ? failureReasons.slice(1).join('; ') : 'None';
+        
+        data.push([
+          wellName,
+          valveType,
+          severity,
+          primaryFailure,
+          secondaryIssues,
+          test.leakRate?.toFixed(3) || 'N/A',
+          recommendedAction
+        ]);
       });
     }
-  } else if (reportType === "wellStatus") {
-    // Keep existing well status logic
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text("Well Status Summary", pageMargin, currentY);
-    currentY += 20;
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-
-    if (!lastReportData || lastReportData.length === 0) {
-        doc.text("No wells found for the selected filters.", pageMargin, currentY);
-    } else {
-        const wells = filterWells(); 
-        wells.forEach(well => {
-            if (currentY > doc.internal.pageSize.getHeight() - 100) {
-                doc.addPage();
-                currentY = pageMargin;
-            }
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text(`Well: ${well.id} (Status: ${well.status || 'N/A'})`, pageMargin, currentY);
-            currentY += 18;
-
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            doc.text(`Location: ${well.country || 'N/A'} > ${well.field || 'N/A'} > ${well.platform || 'N/A'}`, pageMargin, currentY);
-            currentY += 14;
-            doc.text(`Last Test: ${well.lastTest || 'N/A'}`, pageMargin, currentY);
-            currentY += 14;
-
-            if (well.rings && well.rings.length > 0 && (well.status === 'Red' || well.status === 'Orange')) {
-                const problemRing = well.rings.find(r => r.status === well.status || r.status === 'Red' || r.status === 'Orange');
-                if (problemRing) {
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`Primary Concern (${problemRing.label}):`, pageMargin, currentY);
-                    currentY += 12;
-                    doc.setFont(undefined, 'normal');
-                    const concernLines = doc.splitTextToSize(problemRing.message || "Details not specified.", pageWidth - 20);
-                    doc.text(concernLines, pageMargin + 10, currentY);
-                    currentY += concernLines.length * 10 + 10;
-                }
-            }
-            currentY += 5; 
-        });
-    }
-  } else if (lastReportData.length > 0) {
-    // Keep existing table export logic
-    doc.autoTable({
-      head: [lastReportHeaders],
-      body: lastReportData,
-      startY: currentY,
-      theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
-      headStyles: { fillColor: [22, 160, 133], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [240, 240, 240] },
-      margin: { left: pageMargin, right: pageMargin },
-    });
-  } else {
-    doc.text("No data available for this report with the current filters.", pageMargin, currentY);
   }
-
-  doc.save('well-integrity-enhanced-report.pdf');
+  
+  return { data, headers, summary };
 }
 
-console.log('Enhanced Well Integrity Reports System loaded successfully');
+/**
+ * Enhanced detailed test results report
+ */
+function generateEnhancedDetailedTestResultsReport(filters) {
+  const headers = [
+    'Well Name', 'Valve Type', 'Status', 'Leak Rate (scfm)', 'Critical Rate (scfm)', 
+    'Pa (psia)', 'Pc (psia)', 'Pf (psia)', 'P2 (psia)', 
+    'Pass/Fail Analysis', 'Technical Notes'
+  ];
+  const data = [];
+  const summary = { total: 0, avgLeakRate: 0 };
+  
+  const testResults = window.valveTestResults || {};
+  let totalLeakRate = 0;
+  let validTests = 0;
+  
+  for (const [wellKey, valveResults] of Object.entries(testResults)) {
+    const well = (window.wells || []).find(w => w.id === wellKey || w.name === wellKey);
+    const wellId = well?.id || wellKey;
+    const wellName = well?.name || wellKey;
+    
+    if (filters.well && wellId !== filters.well && wellName !== filters.well) continue;
+    
+    for (const [valveId, tests] of Object.entries(valveResults)) {
+      const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+      const valveType = valveInfo?.name || 'Unknown';
+      
+      if (filters.valveType && valveType !== filters.valveType) continue;
+      
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      
+      testArray.forEach(test => {
+        if (!test || typeof test !== 'object') return;
+        
+        if (filters.testStatus && test.status !== filters.testStatus) return;
+        
+        summary.total++;
+        
+        // Accumulate leak rate for summary
+        if (test.leakRate) {
+          totalLeakRate += test.leakRate;
+          validTests++;
+        }
+        
+        // Generate technical analysis based on actual test results
+        let analysis = 'Standard test parameters within acceptable ranges';
+        let technicalNotes = 'No significant technical issues identified';
+        
+        if (test.status === 'fail' || test.pass === false || test.test_valid === false || test.leak_rate_pass === false) {
+          const failureReasons = determineFailureReasons(test, valveType);
+          analysis = `FAILURE ANALYSIS: ${failureReasons.join('; ')}`;
+          
+          if (failureReasons.some(r => r.toLowerCase().includes('leak rate'))) {
+            technicalNotes = `Leak rate failure detected. Review valve sealing integrity and downstream isolation.`;
+          } else if (failureReasons.some(r => r.toLowerCase().includes('pressure'))) {
+            technicalNotes = `Pressure test failure. Check valve sealing integrity and system pressure.`;
+          } else if (failureReasons.some(r => r.toLowerCase().includes('invalid'))) {
+            technicalNotes = `Test validity issues detected. Review test procedures and equipment calibration.`;
+          } else {
+            technicalNotes = `Multiple failure modes detected. Comprehensive valve inspection recommended.`;
+          }
+        }
+        
+        data.push([
+          wellName,
+          valveType,
+          test.status === 'pass' ? 'PASS' : 'FAIL',
+          test.leakRate?.toFixed(3) || 'N/A',
+          test.criticalRate?.toFixed(3) || 'N/A',
+          test.Pa?.toFixed(1) || 'N/A',
+          test.Pc?.toFixed(1) || 'N/A',
+          test.Pf?.toFixed(1) || 'N/A',
+          test.P2?.toFixed(1) || 'N/A',
+          analysis,
+          technicalNotes
+        ]);
+      });
+    }
+  }
+  
+  summary.avgLeakRate = validTests > 0 ? (totalLeakRate / validTests) : 0;
+  
+  return { data, headers, summary };
+}
+
+/**
+ * Enhanced well overview report
+ */
+function generateEnhancedWellOverviewReport(filters) {
+  const headers = ['Well Name', 'Well Type', 'Total Valves', 'Tested Valves', 'Pass Rate %', 'Critical Failures', 'Compliance Status'];
+  const data = [];
+  const summary = { totalWells: 0, averagePassRate: 0, totalCriticalFailures: 0 };
+  
+  const wells = window.wells || [];
+  const testResults = window.valveTestResults || {};
+  let totalPassRate = 0;
+  
+  wells.forEach(well => {
+    if (filters.well && well.id !== filters.well) return;
+    
+    summary.totalWells++;
+    const wellTestResults = testResults[well.id] || testResults[well.name] || {};
+    let totalValves = 0;
+    let testedValves = 0;
+    let passedTests = 0;
+    let failedTests = 0;
+    let criticalFailures = 0;
+    
+    // Count valves from christmasTree configuration
+    if (well.christmasTree?.valves) {
+      totalValves = well.christmasTree.valves.length;
+    }
+    
+    // Analyze test results
+    for (const [valveId, tests] of Object.entries(wellTestResults)) {
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      if (testArray.length > 0) {
+        testedValves++;
+        
+        testArray.forEach(test => {
+          if (test && typeof test === 'object') {
+            // Determine if test failed using comprehensive criteria
+            const testFailed = (test.status === 'fail' || test.pass === false || test.test_valid === false || test.leak_rate_pass === false);
+            
+            if (testFailed) {
+              failedTests++;
+              const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+              if (valveInfo?.name === 'SCSSV') {
+                criticalFailures++;
+              }
+            } else {
+              passedTests++;
+            }
+          }
+        });
+      }
+    }
+    
+    summary.totalCriticalFailures += criticalFailures;
+    
+    const passRate = testedValves > 0 ? ((passedTests / (passedTests + failedTests)) * 100) : 0;
+    totalPassRate += passRate;
+    
+    // Determine compliance status
+    let complianceStatus = 'Compliant';
+    
+    if (criticalFailures > 0) {
+      complianceStatus = 'Non-Compliant';
+    } else if (passRate < 80) {
+      complianceStatus = 'Needs Attention';
+    }
+    
+    data.push([
+      well.name || well.id,
+      well.type || 'N/A',
+      totalValves,
+      testedValves,
+      passRate > 0 ? `${passRate.toFixed(1)}%` : 'N/A',
+      criticalFailures,
+      complianceStatus
+    ]);
+  });
+  
+  summary.averagePassRate = summary.totalWells > 0 ? (totalPassRate / summary.totalWells) : 0;
+  
+  return { data, headers, summary };
+}
+
+/**
+ * Generate compliance report
+ */
+function generateComplianceReport(filters) {
+  const headers = ['Well Name', 'Regulatory Status', 'Test Coverage %', 'Outstanding Issues', 'Next Test Due', 'Compliance Level', 'Action Required'];
+  const data = [];
+  const summary = { compliantWells: 0, nonCompliantWells: 0, overdueTests: 0 };
+  
+  const wells = window.wells || [];
+  const testResults = window.valveTestResults || {};
+  
+  wells.forEach(well => {
+    if (filters.well && well.id !== filters.well) return;
+    
+    const wellTestResults = testResults[well.id] || testResults[well.name] || {};
+    let totalValves = well.christmasTree?.valves?.length || 0;
+    let testedValves = Object.keys(wellTestResults).length;
+    let coveragePercent = totalValves > 0 ? ((testedValves / totalValves) * 100) : 0;
+    
+    let outstandingIssues = [];
+    let criticalFailures = 0;
+    
+    // Check for failures and critical issues
+    for (const [valveId, tests] of Object.entries(wellTestResults)) {
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      testArray.forEach(test => {
+        if (test && (test.status === 'fail' || test.pass === false || test.test_valid === false || test.leak_rate_pass === false)) {
+          const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+          if (valveInfo?.name === 'SCSSV') {
+            outstandingIssues.push(`Critical SCSSV failure`);
+            criticalFailures++;
+          } else {
+            outstandingIssues.push(`${valveInfo?.name || 'Valve'} failure`);
+          }
+        }
+      });
+    }
+    
+    // Determine compliance status
+    let regulatoryStatus = 'Compliant';
+    let complianceLevel = 'Full Compliance';
+    let actionRequired = 'Continue routine testing';
+    
+    if (criticalFailures > 0) {
+      regulatoryStatus = 'Non-Compliant';
+      complianceLevel = 'Critical Non-Compliance';
+      actionRequired = 'IMMEDIATE REGULATORY NOTIFICATION REQUIRED';
+      summary.nonCompliantWells++;
+    } else if (coveragePercent < 100) {
+      regulatoryStatus = 'Incomplete';
+      complianceLevel = 'Partial Compliance';
+      actionRequired = 'Complete remaining valve tests';
+      summary.nonCompliantWells++;
+    } else {
+      summary.compliantWells++;
+    }
+    
+    data.push([
+      well.name || well.id,
+      regulatoryStatus,
+      `${coveragePercent.toFixed(1)}%`,
+      outstandingIssues.length > 0 ? outstandingIssues.join('; ') : 'None',
+      'Annual testing cycle',
+      complianceLevel,
+      actionRequired
+    ]);
+  });
+  
+  return { data, headers, summary };
+}
+
+/**
+ * Generate risk assessment report
+ */
+function generateRiskAssessmentReport(filters) {
+  const headers = ['Well Name', 'Primary Risk Factors', 'Mitigation Status', 'Recommended Actions'];
+  const data = [];
+  const summary = { highRiskWells: 0 };
+  
+  const wells = window.wells || [];
+  const testResults = window.valveTestResults || {};
+  
+  wells.forEach(well => {
+    if (filters.well && well.id !== filters.well) return;
+    
+    const wellTestResults = testResults[well.id] || testResults[well.name] || {};
+    let riskFactors = [];
+    let mitigationStatus = 'Adequate';
+    let priorityLevel = 'Low Priority';
+    
+    // Identify risk factors
+    for (const [valveId, tests] of Object.entries(wellTestResults)) {
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      testArray.forEach(test => {
+        if (test && (test.status === 'fail' || test.pass === false || test.test_valid === false || test.leak_rate_pass === false)) {
+          const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+          if (valveInfo?.name === 'SCSSV') {
+            riskFactors.push('SCSSV failure - Well control risk');
+          } else {
+            riskFactors.push(`${valveInfo?.name || 'Valve'} operational failure`);
+          }
+        }
+      });
+    }
+    
+    // Additional risk factors
+    const totalValves = well.christmasTree?.valves?.length || 0;
+    const testedValves = Object.keys(wellTestResults).length;
+    if (testedValves < totalValves) {
+      riskFactors.push('Incomplete testing coverage');
+    }
+    
+    // Determine overall risk level
+    if (riskFactors.some(factor => factor.includes('SCSSV'))) {
+      priorityLevel = 'Critical Priority';
+      mitigationStatus = 'Inadequate';
+      summary.highRiskWells++;
+    } else if (riskFactors.length > 0) {
+      priorityLevel = 'High Priority';
+      mitigationStatus = 'Needs Improvement';
+    }
+    
+    const recommendedActions = priorityLevel === 'Critical Priority' ? 'Emergency response plan activation' : 
+                              priorityLevel === 'High Priority' ? 'Accelerated maintenance schedule' : 
+                              'Standard maintenance protocols';
+    
+    data.push([
+      well.name || well.id,
+      riskFactors.length > 0 ? riskFactors.join('; ') : 'No significant risk factors',
+      mitigationStatus,
+      recommendedActions
+    ]);
+  });
+  
+  return { data, headers, summary };
+}
+
+/**
+ * Complete updated displayEnhancedReport function for three tables
+ */
+function displayEnhancedReport(data, headers, reportType, summary) {
+  const outputContainer = document.getElementById('reportOutputContainer');
+  if (!outputContainer) return;
+  
+  const reportTitle = getEnhancedReportTitle(reportType);
+  const currentDate = new Date().toLocaleString();
+  
+  // Get the selected well information
+  const selectedWellId = document.getElementById('wellFilter')?.value || '';
+  
+  let html = `
+    <div class="enhanced-report-header">
+      <div class="report-title-section">
+        <h2>${reportTitle}</h2>
+        <div class="report-metadata">
+          <span class="report-date">Generated: ${currentDate}</span>
+          <span class="report-records">Records: ${data.length}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  if (data.length === 0) {
+    html += '<div class="no-data-enhanced">No data available matching the selected criteria.</div>';
+  } else {
+    // Generate the three separate tables
+    const { wellInfoData, initialConditionsData, finalConditionsData } = processDataForTwoTables();
+    
+    // TABLE 1: Well Information
+    html += `
+      <div class="report-table-section">
+        <h3>Well Information</h3>
+        <div class="enhanced-report-table-container">
+          <table class="enhanced-report-table">
+            <thead>
+              <tr>
+                <th>Well ID</th>
+                <th>SITHP</th>
+                <th>Liquid Yield</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${wellInfoData.map(row => `
+                <tr>
+                  <td>${row.wellId}</td>
+                  <td>${row.sithp}</td>
+                  <td>${row.liquidYield}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    // TABLE 2: Initial Conditions
+    html += `
+      <div class="report-table-section">
+        <h3>Initial Conditions</h3>
+        <div class="enhanced-report-table-container">
+          <table class="enhanced-report-table">
+            <thead>
+              <tr>
+                <th>Valve</th>
+                <th>Monitoring Time (min)</th>
+                <th>Maximum Internal Rate (scfm)</th>
+                <th>Initial Temperature (°F)</th>
+                <th>Initial Pressure (psig)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${initialConditionsData.map(row => `
+                <tr>
+                  <td>${row.valve}</td>
+                  <td>${row.monitoringTime}</td>
+                  <td>${row.maxInternalRate}</td>
+                  <td>${row.initialTemperature}</td>
+                  <td>${row.initialPressure}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    // TABLE 3: Final Conditions
+    html += `
+      <div class="report-table-section">
+        <h3>Final Conditions</h3>
+        <div class="enhanced-report-table-container">
+          <table class="enhanced-report-table">
+            <thead>
+              <tr>
+                <th>Valve</th>
+                <th>Final Temperature (°F)</th>
+                <th>Final Pressure (psig)</th>
+                <th>Blocking Valve</th>
+                <th>Actual Internal Leak (scfm)</th>
+                <th>Status</th>
+                <th>Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${finalConditionsData.map(row => {
+                const isFailed = row.status === 'FAIL' || row.status === 'Failed';
+                const rowClass = isFailed ? 'failed-test' : '';
+                
+                return `
+                  <tr class="${rowClass}">
+                    <td>${row.valve}</td>
+                    <td>${row.finalTemperature}</td>
+                    <td>${row.finalPressure}</td>
+                    <td>${row.blockingValve}</td>
+                    <td>${row.actualInternalLeak}</td>
+                    <td class="${isFailed ? 'status-cell-failed' : ''}">${row.status}</td>
+                    <td class="${isFailed ? 'failure-reasons-cell' : ''}">${row.comments}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    
+    // Show statistics BELOW the tables
+    html += generateExecutiveSummary(reportType, summary, data.length);
+  }
+  
+  // Add recommendations section
+  html += generateRecommendationsSection(reportType, summary);
+  
+  outputContainer.innerHTML = html;
+}
+/**
+ * Process the existing test data to create data for the two separate tables
+ */
+function processDataForTwoTables() {
+  const wellInfoData = [];
+  const initialConditionsData = [];
+  const finalConditionsData = [];
+  
+  const filters = getFilterValues();
+  const testResults = window.valveTestResults || {};
+  
+  // Track processed wells to avoid duplicates in well info table
+  const processedWells = new Set();
+  
+  for (const [wellKey, valveResults] of Object.entries(testResults)) {
+    const well = (window.wells || []).find(w => w.id === wellKey || w.name === wellKey);
+    const wellId = well?.id || wellKey;
+    const wellName = well?.name || wellKey;
+    
+    if (filters.well && wellId !== filters.well && wellName !== filters.well) continue;
+    
+    for (const [valveId, tests] of Object.entries(valveResults)) {
+      const valveInfo = (window.allValves || []).find(v => v.id === valveId);
+      const valveType = valveInfo?.name || 'Unknown';
+      
+      if (filters.valveType && valveType !== filters.valveType) continue;
+      
+      // Get only the MOST RECENT test for each valve
+     // Get only the MOST RECENT test for each valve
+      const testArray = Array.isArray(tests) ? tests : [tests];
+      const mostRecentTest = testArray[testArray.length - 1]; // Get last test (most recent)
+
+      // Process only the most recent test
+      if (!mostRecentTest || typeof mostRecentTest !== 'object') return;
+
+      if (filters.testStatus && mostRecentTest.status !== filters.testStatus) return;
+
+      // Well Information Data - only add once per well
+      if (!processedWells.has(wellId)) {
+        wellInfoData.push({
+          wellId: wellName,
+          sithp: mostRecentTest.sithp || mostRecentTest.inputs?.Sithp || 'N/A',
+          liquidYield: mostRecentTest.liquid_yield || mostRecentTest.inputs?.LiquidYield || 'N/A'
+        });
+        processedWells.add(wellId);
+      }
+
+      let comments = 'Test completed successfully';
+      if (mostRecentTest.status === 'fail' || mostRecentTest.pass === false || mostRecentTest.test_valid === false || mostRecentTest.leak_rate_pass === false) {
+        const failureReasons = determineFailureReasons(mostRecentTest, valveType);
+        comments = failureReasons.length > 0 ? failureReasons.join('; ') : 'Test failed - reason undetermined';
+      }
+
+      // Initial Conditions Data
+      initialConditionsData.push({
+        valve: valveType,
+        monitoringTime: mostRecentTest.monitoringTime ?? mostRecentTest.inputs?.MonitoringTime_min ?? 'N/A',
+        maxInternalRate: mostRecentTest.criticalRate ?? 'N/A',
+        initialTemperature: mostRecentTest.initialTemperature ?? 'N/A',
+        initialPressure: mostRecentTest.initialPresure ?? 'N/A'
+      });
+
+      finalConditionsData.push({
+        valve: valveType,
+        finalTemperature: mostRecentTest.finalTemperature ?? 'N/A',
+        finalPressure: mostRecentTest.P2 ?? 'N/A',
+        blockingValve: mostRecentTest.blockingValve ?? 'N/A',
+        actualInternalLeak: (mostRecentTest.leakRate !== null && mostRecentTest.leakRate !== undefined) ? 
+          mostRecentTest.leakRate.toFixed(3) : 'N/A',
+        status: mostRecentTest.status === 'pass' ? 'PASS' : 'FAIL',
+        comments: comments
+      });
+     
+    }
+  }
+  
+  return { wellInfoData, initialConditionsData, finalConditionsData };
+}
+/**
+ * Enhanced CSS injection function to ensure styling is applied
+ */
+/**
+ * Enhanced CSS injection function to ensure styling is applied
+ */
+function injectFailureHighlightingCSS() {
+  // Check if CSS is already injected
+  if (document.getElementById('failure-highlighting-styles')) {
+    return;
+  }
+  
+  const style = document.createElement('style');
+  style.id = 'failure-highlighting-styles';
+  style.textContent = `
+    /* Enhanced failure highlighting styles */
+    .enhanced-report-table tbody tr.failed-test {
+      background-color: #f8d7da !important; /* Light red for all failures */
+      border-left: 4px solid #dc3545 !important;
+      color: #dc3545 !important;
+    }
+    
+    .enhanced-report-table tbody tr.failed-test:hover {
+      background-color: #f1b0b7 !important;
+    }
+    
+    .status-cell-failed {
+      background-color: #dc3545 !important;
+      color: white !important;
+      font-weight: bold !important;
+      text-align: center !important;
+    }
+    
+    .critical-valve-cell {
+      background-color: #dc3545 !important;
+      color: white !important;
+      font-weight: bold !important;
+    }
+    
+    .failure-reasons-cell {
+      font-style: italic;
+      color: #6c757d;
+      background-color: #e2818a;
+    }
+    
+    .failure-alert {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: 2px solid #dc3545;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert-content {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .alert-icon {
+      font-size: 24px;
+      animation: pulse 2s infinite;
+    }
+    
+    .critical-alert {
+      color: #ffecb3;
+      font-weight: bold;
+      animation: blink 1.5s infinite;
+    }
+    
+    .failure-icon, .critical-icon {
+      margin-right: 5px;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      25%, 75% { opacity: 0.5; }
+    }
+    
+    /* Summary card enhancements */
+    .summary-card.failure {
+      background-color: #dc3545;
+      color: white;
+      border: 2px solid #c82333;
+    }
+    
+    .summary-card.critical {
+      background-color: #dc3545;
+      color: white;
+      border: 2px solid #dc3545;
+      animation: pulse 2s infinite;
+    }
+  `;
+  
+  document.head.appendChild(style);
+}
+// Auto-inject CSS when the script loads
+document.addEventListener('DOMContentLoaded', injectFailureHighlightingCSS);
+
+// Also inject immediately if DOM is already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectFailureHighlightingCSS);
+} else {
+  injectFailureHighlightingCSS();
+}
+
+// Export the enhanced function
+window.displayEnhancedReport = displayEnhancedReport;
+window.injectFailureHighlightingCSS = injectFailureHighlightingCSS;
+
+/**
+ * Generate executive summary for reports
+ */
+function generateExecutiveSummary(reportType, summary, recordCount) {
+  let summaryHtml = '<div class="executive-summary">';
+  summaryHtml += '<h3>Executive Summary</h3>';
+  
+  switch (reportType) {
+    case 'valveTestResults':
+      const passRate = summary.total > 0 ? ((summary.passed / summary.total) * 100).toFixed(1) : 0;
+      summaryHtml += `
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-number">${summary.total}</div>
+            <div class="summary-label">Total Tests</div>
+          </div>
+          <div class="summary-card success">
+            <div class="summary-number">${summary.passed}</div>
+            <div class="summary-label">Passed</div>
+          </div>
+          <div class="summary-card failure">
+            <div class="summary-number">${summary.failed}</div>
+            <div class="summary-label">Failed</div>
+          </div>
+          <div class="summary-card performance">
+            <div class="summary-number">${passRate}%</div>
+            <div class="summary-label">Pass Rate</div>
+          </div>
+        </div>
+        <p><strong>Key Finding:</strong> ${summary.criticalFailures > 0 ? 
+          `${summary.criticalFailures} critical failure(s) require immediate attention.` :
+          'All systems operating within acceptable parameters.'}</p>
+      `;
+      break;
+      
+    case 'testFailureSummary':
+      summaryHtml += `
+        <div class="summary-grid">
+          <div class="summary-card failure">
+            <div class="summary-number">${summary.totalFailures || recordCount}</div>
+            <div class="summary-label">Total Issues</div>
+          </div>
+          <div class="summary-card critical">
+            <div class="summary-number">${summary.criticalFailures || 0}</div>
+            <div class="summary-label">Critical</div>
+          </div>
+          <div class="summary-card major">
+            <div class="summary-number">${summary.majorFailures || 0}</div>
+            <div class="summary-label">Major</div>
+          </div>
+          <div class="summary-card minor">
+            <div class="summary-number">${summary.minorFailures || 0}</div>
+            <div class="summary-label">Minor</div>
+          </div>
+        </div>
+        <p><strong>Assessment:</strong> ${summary.criticalFailures > 0 ? 
+          'Critical issues detected requiring immediate intervention.' :
+          'Manageable issues with standard mitigation protocols.'}</p>
+      `;
+      break;
+      
+    case 'riskAssessment':
+      summaryHtml += `
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-number">${recordCount}</div>
+            <div class="summary-label">Total Wells</div>
+          </div>
+          <div class="summary-card critical">
+            <div class="summary-number">${summary.highRiskWells || 0}</div>
+            <div class="summary-label">High Risk Wells</div>
+          </div>
+        </div>
+        <p><strong>Assessment:</strong> ${summary.highRiskWells > 0 ? 
+          'High risk conditions detected requiring immediate intervention.' :
+          'Manageable risk levels with standard mitigation protocols.'}</p>
+      `;
+      break;
+      
+    default:
+      summaryHtml += `
+        <div class="summary-card">
+          <div class="summary-number">${recordCount}</div>
+          <div class="summary-label">Total Records</div>
+        </div>
+        <p><strong>Status:</strong> Report generated successfully with comprehensive data analysis.</p>
+      `;
+  }
+  
+  summaryHtml += '</div>';
+  return summaryHtml;
+}
+
+/**
+ * Generate recommendations section
+ */
+function generateRecommendationsSection(reportType, summary) {
+  let recommendationsHtml = '<div class="recommendations-section">';
+  recommendationsHtml += '<h3>Recommendations & Next Steps</h3>';
+  recommendationsHtml += '<div class="recommendations-list">';
+  
+  switch (reportType) {
+    case 'valveTestResults':
+      if (summary.criticalFailures > 0) {
+        recommendationsHtml += '<div class="recommendation urgent"><strong>URGENT:</strong> Address critical valve failures immediately - implement emergency response protocols.</div>';
+      }
+      recommendationsHtml += '<div class="recommendation standard"><strong>ROUTINE:</strong> Continue regular testing schedule and monitor trends.</div>';
+      break;
+      
+    case 'testFailureSummary':
+      recommendationsHtml += '<div class="recommendation urgent"><strong>PRIORITY 1:</strong> All critical failures require immediate corrective action.</div>';
+      recommendationsHtml += '<div class="recommendation important"><strong>PRIORITY 2:</strong> Major failures should be addressed within 7 days.</div>';
+      recommendationsHtml += '<div class="recommendation standard"><strong>PRIORITY 3:</strong> Monitor minor issues and schedule maintenance as required.</div>';
+      break;
+      
+    case 'riskAssessment':
+      recommendationsHtml += '<div class="recommendation urgent"><strong>MITIGATION:</strong> Implement enhanced monitoring for high-risk wells.</div>';
+      recommendationsHtml += '<div class="recommendation standard"><strong>COMPLIANCE:</strong> Ensure all recommendations align with regulatory requirements.</div>';
+      break;
+      
+    default:
+      recommendationsHtml += '<div class="recommendation standard"><strong>ACTION:</strong> Review report findings and implement appropriate corrective measures.</div>';
+  }
+  
+  recommendationsHtml += '</div></div>';
+  return recommendationsHtml;
+}
+
+/**
+ * Get enhanced report title with dynamic well information
+ */
+function getEnhancedReportTitle(reportType) {
+  const selectedWellId = document.getElementById('wellFilter')?.value || '';
+  let wellName = '';
+  
+  if (selectedWellId) {
+    const well = (window.wells || []).find(w => w.id === selectedWellId || w.name === selectedWellId);
+    wellName = well?.name || well?.id || selectedWellId;
+    return `COP WELL INTEGRITY TEST REPORT FOR ${wellName}`;
+  } else {
+    return 'COP WELL INTEGRITY TEST REPORT FOR THE ALBA FIELD';
+  }
+}
+
+/**
+ * Print current report
+ */
+function printCurrentReport() {
+  window.print();
+}
+
+/**
+ * Updated CSV export to export all three tables
+ */
+function exportCurrentReportCSV() {
+  if (!lastWellInfoData && !lastInitialConditionsData && !lastFinalConditionsData) {
+    alert('No report data to export');
+    return;
+  }
+  
+  let csvContent = `"${getEnhancedReportTitle(lastReportType)}"\n`;
+  csvContent += `"Generated: ${new Date().toLocaleString()}"\n\n`;
+  
+  // Add summary if available
+  if (lastReportSummary && Object.keys(lastReportSummary).length > 0) {
+    csvContent += '"EXECUTIVE SUMMARY"\n';
+    for (const [key, value] of Object.entries(lastReportSummary)) {
+      csvContent += `"${key}","${value}"\n`;
+    }
+    csvContent += '\n';
+  }
+  
+  // TABLE 1: Well Information
+  if (lastWellInfoData.length > 0) {
+    csvContent += '"WELL INFORMATION"\n';
+    csvContent += '"Well ID","SITHP","Liquid Yield"\n';
+    csvContent += lastWellInfoData.map(row => 
+      `"${row.wellId}","${row.sithp}","${row.liquidYield}"`
+    ).join('\n') + '\n\n';
+  }
+  
+  // TABLE 2: Initial Conditions
+  if (lastInitialConditionsData.length > 0) {
+    csvContent += '"INITIAL CONDITIONS"\n';
+    csvContent += '"Valve","Monitoring Time (min)","Maximum Internal Rate (scfm)","Initial Temperature (°F)","Initial Pressure (psig)"\n';
+    csvContent += lastInitialConditionsData.map(row => 
+      `"${row.valve}","${row.monitoringTime}","${row.maxInternalRate}","${row.initialTemperature}","${row.initialPressure}"`
+    ).join('\n') + '\n\n';
+  }
+  
+  // TABLE 3: Final Conditions
+  if (lastFinalConditionsData.length > 0) {
+    csvContent += '"FINAL CONDITIONS"\n';
+    csvContent += '"Valve","Final Temperature (°F)","Final Pressure (psig)","Blocking Valve","Actual Internal Leak (scfm)","Status","Comments"\n';
+    csvContent += lastFinalConditionsData.map(row => 
+      `"${row.valve}","${row.finalTemperature}","${row.finalPressure}","${row.blockingValve}","${row.actualInternalLeak}","${row.status}","${row.comments}"`
+    ).join('\n') + '\n';
+  }
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `well_integrity_three_tables_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+/**
+ * Updated PDF export to show all three tables
+ */
+function exportCurrentReportPDF() {
+  if (!lastWellInfoData && !lastInitialConditionsData && !lastFinalConditionsData) {
+    alert('No report data to export');
+    return;
+  }
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  
+  // CLEAN TITLE SECTION
+  // Simple blue background for title (no border, cleaner look)
+  doc.setFillColor(255, 253, 208); // Blue background
+  doc.rect(20, 15, 257, 18, 'F'); // Cleaner rectangle
+  
+  // Main title - white text on blue background
+  doc.setFontSize(20); // Slightly smaller for better proportion
+  doc.setTextColor(0, 0, 0); // White text
+  doc.setFont(undefined, 'bold');
+  const titleText = getEnhancedReportTitle(lastReportType);
+  
+  // Center the title
+  const pageWidth = doc.internal.pageSize.width;
+  const titleWidth = doc.getTextWidth(titleText);
+  const titleX = (pageWidth - titleWidth) / 2;
+  doc.text(titleText, titleX, 26);
+  
+  // SIMPLE METADATA - No strange characters
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100); // Gray text
+  doc.setFont(undefined, 'normal');
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 25, 45);
+  doc.text('Well Integrity Management System', 200, 45);
+  
+  // Clean separator line
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(25, 46, 272, 46);  // Extremely close (1px gap)
+
+
+    // Add this section after the separator line and before startY = 65
+  // SUMMARY SECTION - Test Results Overview
+  const totalTests = lastFinalConditionsData.length;
+  const failedTests = lastFinalConditionsData.filter(row => row.status === 'FAIL' || row.status === 'Failed').length;
+  const passedTests = totalTests - failedTests;
+  const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : 0;
+
+  // Summary box background
+  doc.setFillColor(248, 249, 250); // Light gray background
+  doc.rect(25, 52, 247, 25, 'F');
+
+  // Summary title
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(undefined, 'bold');
+  doc.text('TEST RESULTS SUMMARY', 25, 60);
+
+  // Summary content in columns
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+
+  // Total Tests
+  doc.setTextColor(0, 0, 0);
+  doc.text('Total Tests:', 30, 68);
+  doc.setFont(undefined, 'bold');
+  doc.text(`${totalTests}`, 70, 68);
+
+  // Passed Tests
+  doc.setFont(undefined, 'normal');
+  doc.text('Passed:', 100, 68);
+  doc.setTextColor(0, 128, 0); // Green for passed
+  doc.setFont(undefined, 'bold');
+  doc.text(`${passedTests}`, 130, 68);
+
+  // Failed Tests
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(undefined, 'normal');
+  doc.text('Failed:', 160, 68);
+  doc.setTextColor(220, 53, 69); // Red for failed
+  doc.setFont(undefined, 'bold');
+  doc.text(`${failedTests}`, 185, 68);
+
+  // Pass Rate
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(undefined, 'normal');
+  doc.text('Pass Rate:', 215, 68);
+  doc.setFont(undefined, 'bold');
+  doc.text(`${passRate}%`, 250, 68);
+
+  // Update startY to account for summary section
+  let startY = 95; // Changed from 65 to 85
+    
+ 
+  
+  // TABLE 1: Well Information - CLEAN APPROACH
+  if (lastWellInfoData.length > 0) {
+    // Simple section header - no background, just larger text
+    doc.setFontSize(11);
+    doc.setTextColor(0,0,0); // Blue text
+    doc.setFont(undefined, 'bold');
+    doc.text('WELL INFORMATION', 25, startY);
+    
+    // Add some space after header
+    startY += 2;
+    
+    doc.autoTable({
+      head: [['Well ID', 'SITHP', 'Liquid Yield']],
+      body: lastWellInfoData.map(row => [row.wellId, row.sithp, row.liquidYield]),
+      startY: startY,
+      styles: { 
+        fontSize: 10, 
+        cellPadding: 4,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      headStyles: { 
+        fillColor: [255, 253, 208], 
+        textColor: [0,0,0],
+        fontSize: 11,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
+      },
+      margin: { left: 25, right: 25 }
+    });
+    
+    // MORE SPACE between tables
+    startY = doc.lastAutoTable.finalY + 20;
+  }
+  
+  // TABLE 2: Initial Conditions - CLEAN APPROACH
+  if (lastInitialConditionsData.length > 0) {
+    // Simple section header
+    doc.setFontSize(11);
+    doc.setTextColor(0,0,0);
+    doc.setFont(undefined, 'bold');
+    doc.text('INITIAL CONDITIONS', 25, startY);
+    startY += 2;
+    
+    doc.autoTable({
+      head: [['Valve', 'Monitoring Time (min)', 'Max Internal Rate (scfm)', 'Initial Temp (°F)', 'Initial Pressure (psig)']],
+      body: lastInitialConditionsData.map(row => [
+        row.valve, row.monitoringTime, row.maxInternalRate, row.initialTemperature, row.initialPressure
+      ]),
+      startY: startY,
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      headStyles: { 
+        fillColor: [255, 253, 208], 
+        textColor: [0,0,0],
+        fontSize: 9,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
+      },
+      margin: { left: 25, right: 25 }
+    });
+    
+    startY = doc.lastAutoTable.finalY + 20;
+  }
+  
+  // TABLE 3: Final Conditions - CLEAN APPROACH
+  if (lastFinalConditionsData.length > 0) {
+    // Check if we need a new page
+    if (startY > 150) {
+      doc.addPage();
+      startY = 25;
+    }
+    
+    // Simple section header
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    doc.text('FINAL CONDITIONS', 25, startY);
+    startY += 2;
+    
+    doc.autoTable({
+      head: [['Valve', 'Final Temp (°F)', 'Final Pressure (psig)', 'Blocking Valve', 'Actual Leak (scfm)', 'Status', 'Comments']],
+      body: lastFinalConditionsData.map(row => [
+        row.valve, row.finalTemperature, row.finalPressure, row.blockingValve, row.actualInternalLeak, row.status, row.comments
+      ]),
+      startY: startY,
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      headStyles: { 
+        fillColor: [255, 253, 208], 
+        textColor: [0,0,0],
+        fontSize: 9,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
+      },
+      didParseCell: function(data) {
+        if (data.section === 'body') {
+          const rowData = lastFinalConditionsData[data.row.index];
+          if (rowData && (rowData.status === 'FAIL' || rowData.status === 'Failed')) {
+            // Simple red highlighting for failed tests
+            data.cell.styles.fillColor = [255, 230, 230]; // Very light red
+            data.cell.styles.textColor = [180, 50, 50]; // Dark red text
+            
+            if (data.column.index === 5) { // Status column
+              data.cell.styles.fillColor = [220, 53, 69]; // Red background
+              data.cell.styles.textColor = [255, 255, 255]; // White text
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
+      },
+      margin: { left: 25, right: 25 }
+    });
+    
+    startY = doc.lastAutoTable.finalY + 15;
+  }
+  
+  // SIMPLE failure summary - no strange characters
+  const failureCount = lastFinalConditionsData.filter(row => row.status === 'FAIL' || row.status === 'Failed').length;
+  if (failureCount > 0) {
+    // Simple warning box
+    doc.setFillColor(255, 240, 240); // Very light red
+    doc.rect(25, startY, 247, 12, 'F');
+    
+    doc.setTextColor(220, 53, 69);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(`WARNING: ${failureCount} Test Failure(s) Detected - Review Required`, 30, startY + 8);
+  }
+  
+  // CLEAN FOOTER - Simple and minimal
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    
+    // Simple footer line
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(25, 195, 272, 195);
+    
+    // Footer text
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Page ${i} of ${pageCount}`, 250, 202);
+    doc.text('Well Integrity Management System', 25, 202);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 25, 206);
+  }
+  
+  // Save with simple filename
+  const filename = `well_integrity_report_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(filename);
+}
+
+/**
+ * Alternative function for high-contrast PDF export (black/white printer friendly)
+ */
+
+// Export the enhanced functions
+window.exportCurrentReportPDF = exportCurrentReportPDF;
+window.exportCurrentReportPDFHighContrast = exportCurrentReportPDFHighContrast;
+
+// Export functions to global scope
+window.renderReportsSection = renderReportsSection;
+window.generateReport = generateReport;
+window.exportCurrentReportCSV = exportCurrentReportCSV;
+window.exportCurrentReportPDF = exportCurrentReportPDF;
+window.printCurrentReport = printCurrentReport;

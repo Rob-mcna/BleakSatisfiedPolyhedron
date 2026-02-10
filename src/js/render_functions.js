@@ -139,7 +139,7 @@ async function loadValveTestStatuses(wellId) {
     }
 
     console.log(`Fetching test results from API for well ${wellId}`);
-    const response = await fetch(`http://10.226.113.28:5000/api/integrity_test/results?well=${wellId}`);
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/results?well=${wellId}`);
     if (!response.ok) {
       console.warn(`Failed to fetch valve test results for well ${wellId}: ${response.statusText}`);
       return {};
@@ -200,7 +200,7 @@ async function renderWellSchematicAndPanel(wellId) {
 
   const schematicPath = wellConfig.christmasTree && wellConfig.christmasTree.schematic;
   if (schematicPath) {
-    const fullSchematicURL = `http://10.226.113.28:5000${schematicPath}`;
+    const fullSchematicURL = `http://127.0.0.1:5000${schematicPath}`;
     wellSchematicArea.innerHTML = `<div class="loading-schematic">Loading schematic...</div>`;
     try {
       const response = await fetch(fullSchematicURL);
@@ -219,7 +219,7 @@ async function renderWellSchematicAndPanel(wellId) {
   try {
     if (!window.allValves || window.allValves.length === 0) {
       console.log("Fetching valve list from API");
-      const valvesResponse = await fetch("http://10.226.113.28:5000/api/valves/");
+      const valvesResponse = await fetch("http://127.0.0.1:5000/api/valves/");
       if (valvesResponse.ok) {
         allValves = await valvesResponse.json();
         window.allValves = allValves;
