@@ -163,7 +163,45 @@ def get_integrity_failure_action(failure_id):
 
 
 
+@integrity_teste_bp.route("/results", methods=["GET"])
+def get_integrity_results_for_well():
+    """
+    GET /api/integrity_test/results?well=<well_id>
 
+    Returns all integrity-test results for a given well.
+    This matches the frontend call:
+      /api/integrity_test/results?well=${wellId}
+    """
+    well_id = request.args.get("well")
+    if not well_id:
+        return jsonify({"Error": "Missing well parameter"}), 400
+
+    # Query all results for this well, join to get valve name
+    results = (
+        InegrityTestResult.query
+        .join(Valve, Valve.id == InegrityTestResult.test_valve_id)
+        .filter(InegrityTestResult.test_well_id == well_id)
+        .all()
+    )
+
+    out = []
+    for r in results:
+        out.append({
+            "valveId": r.test_valve_id,
+            "valveName": r.blocking_valve.name if r.blocking_valve else None,
+            "monitoringTime": r.monitoring_time,
+            "criticalRate": r.critical_rate,
+            "initialPressure": r.initial_pressure,
+            "finalPressure": r.final_pressure,
+            "initialTemperature": r.initial_temperature,
+            "finalTemperature": r.final_temperature,
+            "leakRate": r.leak_rate,
+            "sithp": r.sithp,
+            "liquid_yield": r.liquid_yield,
+            "status": r.status,
+        })
+
+    return jsonify(out)
 
 def give_integrity_test_for_well(well_id: str):
     """
