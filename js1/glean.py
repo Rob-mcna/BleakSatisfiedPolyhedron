@@ -221,3 +221,112 @@ def give_integrity_test_for_well(well_id: str):
     )
 
     return [r.to_dict() for r in results]
+
+
+
+
+
+
+@integrity_teste_bp.route("/results", methods=["GET"])
+def get_integrity_results_for_well():
+    """
+    GET /api/integrity_test/results?well=<well_id>
+
+    Returns all integrity-test results for the given well in the format
+    the frontend expects:
+
+      {
+        "<valveId>": [  // array of test runs for this valve
+          {
+            leak_rate_scfm: ...,
+            limits: { monitoring_time_min, critical_rate_scfm },
+            thresholds: { Pa, Pc, Pf, P2, xc },
+            inputs: { Well, ValveType, BlockingValve, ... },
+            status: "pass" | "fail",
+            ...
+          },
+          ...
+        ],
+        ...
+      }
+    """
+    well_id = request.args.get("well")
+    if not well_id:
+        return jsonify({"Error": "Missing well parameter"}), 400
+
+    # Load all test results for this well
+    results = (
+        InegrityTestResult.query
+        .options(
+            db.joinedload(InegrityTestResult.blocking_valve),
+            db.joinedload(InegrityTestResult.test_valve),
+            db.joinedload(InegrityTestResult.test_well),
+        )
+        .filter(InegrityTestResult.test_well_id == well_id)
+        .all()
+    )
+
+    out = {}
+
+    for r in results:
+        valve_id = str(r.test_valve_id)
+
+        # Build an object that matches what integrity_test() returns
+        # so validateTestOnFrontend can work without changes.
+        final_pressure_psia = psig_to_psia(r.final_pressure)
+
+        test_obj = {
+            # Main result fields
+            "leak_rate_scfm": r.leak_rate,
+            "leak_rate_pass": (r.leak_rate is not None and r.critical_rate is not None
+                               and r.leak_rate <= r.critical_rate),
+            "failure_reasons": [],  # can be filled on frontend
+
+            # Limits section
+            "limits": {
+                "monitoring_time_min": r.monitoring_time,
+                "critical_rate_scfm": r.critical_rate,
+            },
+
+            # Thresholds section (Pc, Pa, Pf, P2 etc)
+            "thresholds": {
+                "Pf": r.pressure_final_condition,      # allowed final pressure
+                "P2": final_pressure_psia,             # actual final pressure in psia
+                "Pa": r.allowable_test_starting,       # allowed starting pressure
+                "Pc": r.critical_pressure_cavity,      # critical pressure
+                "xc": r.critical_pressure_ratio,       # critical ratio
+            },
+
+            # Inputs section (used in UI + export)
+            "inputs": {
+                "Well": r.test_well.name if r.test_well else None,
+                "ValveType": r.test_valve.name if r.test_valve else None,
+                "BlockingValve": (
+                    r.blocking_valve.name if r.blocking_valve else None
+                ),
+                "InitialPressure_psig": r.initial_pressure,
+                "FinalPressure_psig": r.final_pressure,
+                "InitialTemperature_F": r.initial_temperature,
+                "FinalTemperature_F": r.final_temperature,
+                "MonitoringTime_min": r.monitoring_time,
+                "LiquidYield": r.liquid_yield,
+                "SITHP_psig": r.sithp,
+                "specificHeatRatio": r.specific_heat_ratio,
+                "GasSG": r.gas_specific_gravity,
+                "timestamp": (
+                    r.updated_at or r.created_at
+                ),
+            },
+
+            # Status for coloring
+            "status": r.status,  # "pass" / "fail" as you already store
+
+            # Optional: echo a few more DB fields if useful in frontend/debug
+            "monitoringTime": r.monitoring_time,
+            "criticalRate": r.critical_rate,
+        }
+
+        # Group by valveId, as the frontend expects
+        out.setdefault(valve_id, []).append(test_obj)
+
+    return jsonify(out)
