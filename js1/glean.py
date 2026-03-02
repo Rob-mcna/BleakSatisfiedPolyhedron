@@ -160,3 +160,26 @@ def get_integrity_failure_action(failure_id):
     Returns a specific failure-action record.
     """
     return jsonify(give_test_failure_action(failure_id))
+
+
+
+
+
+def give_integrity_test_for_well(well_id: str):
+    """
+    Return all integrity test results for a given well_id.
+    This is pseudocode – adapt to your ORM.
+    """
+    # Example with SQLAlchemy model InegrityTestResult:
+    from app.models.integrity_test_result import InegrityTestResult
+
+    if not well_id:
+        return {"error": "Missing well parameter"}
+
+    results = (
+        InegrityTestResult.query
+        .filter_by(well_id=well_id)
+        .all()
+    )
+
+    return [r.to_dict() for r in results]
