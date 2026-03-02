@@ -1,0 +1,150 @@
+# app/routes/well_integrity_test_routes.py
+# -*- coding: utf-8 -*-
+
+from flask import Blueprint, jsonify, request
+
+from app.controllers.well_integrity_test_controller import (
+    blocking_valve,
+    give_integrity_test,
+    integrity_test,
+    give_integrity_test_failure,
+    save_test_failure,
+    save_test_failure_action,
+    update_test_failure_action,
+    give_test_failure_action,
+)
+
+# This blueprint is registered in create_app() with:
+# app.register_blueprint(integrity_teste_bp, url_prefix="/api/integrity_test")
+#
+# So:
+#   "/"           → /api/integrity_test/
+#   "/failure"    → /api/integrity_test/failure
+#   "/action"     → /api/integrity_test/action
+#   "/blocking_valve" → /api/integrity_test/blocking_valve
+#   "/valid_blocking_valves" → /api/integrity_test/valid_blocking_valves
+
+integrity_teste_bp = Blueprint("integrity_test", __name__)
+
+# ---------------------------------------------------------------------------
+# Blocking valve helpers
+# ---------------------------------------------------------------------------
+
+@integrity_teste_bp.route("/blocking_valve", methods=["GET"])
+def get_blocking_valve():
+    """
+    GET /api/integrity_test/blocking_valve?well=<well_id>&valve=<valve_id>
+    Raw helper endpoint that returns whatever blocking_valve() returns.
+    """
+    well_id = request.args.get("well")
+    valve_id = request.args.get("valve")
+    return jsonify(blocking_valve(well_id, valve_id))
+
+@integrity_teste_bp.route("/valid_blocking_valves", methods=["GET"])
+def get_valid_blocking_valves():
+    """
+    GET /api/integrity_test/valid_blocking_valves?well=<well_id>&valve=<valve_id>
+
+    Returns a normalized structure for the frontend dropdown:
+      { "blocking_valves": [ "HWV", "MMV", ... ] }
+    """
+    well_id = request.args.get("well")
+    valve_id = request.args.get("valve")
+
+    raw = blocking_valve(well_id, valve_id)
+
+    if raw is None:
+        vals = []
+    elif isinstance(raw, (list, tuple, set)):
+        vals = list(raw)
+    else:
+        vals = [raw]
+
+    return jsonify({"blocking_valves": vals})
+
+# ---------------------------------------------------------------------------
+# Integrity test: GET existing result, POST new test
+# ---------------------------------------------------------------------------
+
+@integrity_teste_bp.route("/", methods=["GET"])
+def get_integrity_test():
+    """
+    GET /api/integrity_test/?well=<well_id>&valve=<valve_id>
+
+    Used by the dashboard (fetchValveTestResults) to read saved test results.
+    """
+    well_id = request.args.get("well")
+    valve_id = request.args.get("valve")
+    return jsonify(give_integrity_test(well_id, valve_id))
+
+@integrity_teste_bp.route("/", methods=["POST"])
+def post_integrity_test():
+    """
+    POST /api/integrity_test/
+
+    Body: JSON payload from the frontend valve test form.
+    This runs the test and stores the result.
+    """
+    data = request.get_json(silent=True) or {}
+    return jsonify(integrity_test(data))
+
+# ---------------------------------------------------------------------------
+# Test failure records (for failed integrity tests)
+# ---------------------------------------------------------------------------
+
+@integrity_teste_bp.route("/failure", methods=["POST"])
+def post_integrity_failure():
+    """
+    POST /api/integrity_test/failure?well=<well_id>&valve=<valve_id>
+
+    Body: JSON describing the failure, sent when a test fails.
+    """
+    well_id = request.args.get("well")
+    valve_id = request.args.get("valve")
+    data = request.get_json(silent=True) or {}
+    return jsonify(save_test_failure(well_id, valve_id, data))
+
+@integrity_teste_bp.route("/failure", methods=["GET"])
+def get_integrity_test_failure():
+    """
+    GET /api/integrity_test/failure?well=<well_id>&valve=<valve_id>
+
+    Returns failure information for a given well+valve pair.
+    """
+    well_id = request.args.get("well")
+    valve_id = request.args.get("valve")
+    return jsonify(give_integrity_test_failure(well_id, valve_id))
+
+# ---------------------------------------------------------------------------
+# Actions taken on failures
+# ---------------------------------------------------------------------------
+
+@integrity_teste_bp.route("/action", methods=["POST"])
+def post_integrity_failure_action():
+    """
+    POST /api/integrity_test/action?id=<failure_id>
+
+    Body: JSON describing an action taken to address the failure.
+    """
+    failure_id = request.args.get("id")
+    data = request.get_json(silent=True) or {}
+    return jsonify(save_test_failure_action(failure_id, data))
+
+@integrity_teste_bp.route("/action/<string:failure_id>", methods=["PUT"])
+def put_integrity_failure_action(failure_id):
+    """
+    PUT /api/integrity_test/action/<failure_id>
+
+    Updates an existing failure-action record.
+    """
+    data = request.get_json(silent=True) or {}
+    return jsonify(update_test_failure_action(failure_id, data))
+
+@integrity_teste_bp.route("/action/<string:failure_id>", methods=["GET"])
+def get_integrity_failure_action(failure_id):
+    """
+    GET /api/integrity_test/action/<failure_id>
+
+    Returns a specific failure-action record.
+    """
+    return jsonify(give_test_failure_action(failure_id))
