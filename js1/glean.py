@@ -332,185 +332,130 @@ def get_integrity_results_for_well():
     return jsonify(out)
 
 
---- Fetch Complete ---
-dashboard.js:341 Valves with valid test data: 0
-dashboard.js:342 Valves skipped (invalid/no data): 0
-dashboard.js:343 Valves with valid test data (window.valveTestResults): {}
-dashboard.js:344 Valves with no/invalid data (window.valvesWithNoData): {}
-dashboard.js:1404 Dashboard: Well data and valve test results fetched successfully.
-dashboard.js:518 Deduplicated wells: 17 → 17
-dashboard.js:518 Deduplicated wells: 17 → 17
-dashboard.js:518 Deduplicated wells: 17 → 17
-dashboard.js:518 Deduplicated wells: 17 → 17
-render_functions.js:184 Starting to render schematic for well 05b0eba6-126d-4e23-89d9-679c40969b0a
-render_functions.js:128 Loading valve test results for well 05b0eba6-126d-4e23-89d9-679c40969b0a
-render_functions.js:141 Fetching test results from API for well 05b0eba6-126d-4e23-89d9-679c40969b0a
-safety_system.js:237 Dashboard filter changed to: safety-system
-dashboard.js:518 Deduplicated wells: 17 → 17
-dashboard.js:518 Deduplicated wells: 17 → 17
-dashboard.js:518 Deduplicated wells: 17 → 17
-render_functions.js:149 Fetched test results for well 05b0eba6-126d-4e23-89d9-679c40969b0a: (9) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 3, finalTemperature: 91, initialPressure: 1, initialTemperature: 92, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 3, finalTemperature: 91, initialPressure: 1, initialTemperature: 92, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 14, finalTemperature: 117, initialPressure: 0, initialTemperature: 126, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 14, finalTemperature: 117, initialPressure: 0, initialTemperature: 126, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 26, finalTemperature: 126, initialPressure: 0, initialTemperature: 129, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 26, finalTemperature: 126, initialPressure: 0, initialTemperature: 129, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 34, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 34, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:420 Validating test with data: {criticalRate: 3, finalPressure: 4, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:421 Using valve limits: {critical_rate: 3}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 3, finalPressure: 4, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 12, finalTemperature: 90, initialPressure: 5, initialTemperature: 90, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 12, finalTemperature: 90, initialPressure: 5, initialTemperature: 90, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 748, finalTemperature: 90, initialPressure: 540, initialTemperature: 90, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=false, status=fail {criticalRate: 15, finalPressure: 748, finalTemperature: 90, initialPressure: 540, initialTemperature: 90, …}
-render_functions.js:168 Successfully loaded and validated test results for well 05b0eba6-126d-4e23-89d9-679c40969b0a {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:149 Fetched test results for well 05b0eba6-126d-4e23-89d9-679c40969b0a: (9) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 3, finalTemperature: 91, initialPressure: 1, initialTemperature: 92, …}criticalRate: 15finalPressure: 3finalTemperature: 91initialPressure: 1initialTemperature: 92leakRate: 0.2355371944929222liquid_yield: 31monitoringTime: 30sithp: 748status: "pass"valveId: "4169ca77-9463-4df1-9393-9114ef664ae2"valveName: "HBV"[[Prototype]]: Object
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 3, finalTemperature: 91, initialPressure: 1, initialTemperature: 92, …}P2: 0Pa: 0Pc: 0Pf: 0criticalRate: 15failure_reasons: []finalPressure: 3finalTemperature: 91initialPressure: 1initialTemperature: 92inputs: {}leakRate: 0.2355371944929222leak_rate_pass: trueliquid_yield: 31monitoringTime: 30pass: truesithp: 748status: "pass"test_valid: truethresholds: {}valveId: "4169ca77-9463-4df1-9393-9114ef664ae2"valveName: "HBV"[[Prototype]]: Object
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 14, finalTemperature: 117, initialPressure: 0, initialTemperature: 126, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 14, finalTemperature: 117, initialPressure: 0, initialTemperature: 126, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 26, finalTemperature: 126, initialPressure: 0, initialTemperature: 129, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 26, finalTemperature: 126, initialPressure: 0, initialTemperature: 129, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 34, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 34, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:420 Validating test with data: {criticalRate: 3, finalPressure: 4, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:421 Using valve limits: {critical_rate: 3}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 3, finalPressure: 4, finalTemperature: 129, initialPressure: 0, initialTemperature: 137, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 1, finalTemperature: 114, initialPressure: 0, initialTemperature: 117, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 12, finalTemperature: 90, initialPressure: 5, initialTemperature: 90, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=true, status=pass {criticalRate: 15, finalPressure: 12, finalTemperature: 90, initialPressure: 5, initialTemperature: 90, …}
-wellsection.js:420 Validating test with data: {criticalRate: 15, finalPressure: 748, finalTemperature: 90, initialPressure: 540, initialTemperature: 90, …}
-wellsection.js:421 Using valve limits: {critical_rate: 15}
-wellsection.js:494 Test validation result: pass=false, status=fail {criticalRate: 15, finalPressure: 748, finalTemperature: 90, initialPressure: 540, initialTemperature: 90, …}
-render_functions.js:168 Successfully loaded and validated test results for well 05b0eba6-126d-4e23-89d9-679c40969b0a {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:238 Available test results for well: 05b0eba6-126d-4e23-89d9-679c40969b0a
-render_functions.js:239 By ID: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:240 By name: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:238 Available test results for well: 05b0eba6-126d-4e23-89d9-679c40969b0a
-render_functions.js:239 By ID: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:240 By name: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:238 Available test results for well: 05b0eba6-126d-4e23-89d9-679c40969b0a
-render_functions.js:239 By ID: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:240 By name: {0: {…}, 1: {…}, 2: {…}, 3: {…}, 4: {…}, 5: {…}, 6: {…}, 7: {…}, 8: {…}}
-render_functions.js:245 Processing SVG elements for valve coloring
-render_functions.js:257 Checking test status for valve: TC (4f58a31a-f017-4065-9d54-dda9b75061b4)
-render_functions.js:285 No test results found for TC
-render_functions.js:291 Set color #e6c23a for valve TC
-render_functions.js:257 Checking test status for valve: 2SV (e78e3951-f2ad-4d6a-9415-21d68eee27af)
-render_functions.js:285 No test results found for 2SV
-render_functions.js:291 Set color #e6c23a for valve 2SV
-render_functions.js:257 Checking test status for valve: SV (dda5652d-3dd9-4602-b627-037ee1f45332)
-render_functions.js:285 No test results found for SV
-render_functions.js:291 Set color #e6c23a for valve SV
-render_functions.js:257 Checking test status for valve: MWV (37c31fcb-6dba-4c4c-a3b0-3b850addc048)
-render_functions.js:285 No test results found for MWV
-render_functions.js:291 Set color #e6c23a for valve MWV
-render_functions.js:257 Checking test status for valve: HWV (f3d31658-f4e8-443a-bd7c-86bccddc376f)
-render_functions.js:285 No test results found for HWV
-render_functions.js:291 Set color #e6c23a for valve HWV
-render_functions.js:257 Checking test status for valve: HMV (16859638-e5b3-4f46-ad5b-d7001c1c22fe)
-render_functions.js:285 No test results found for HMV
-render_functions.js:291 Set color #e6c23a for valve HMV
-render_functions.js:257 Checking test status for valve: MMV (fd977c5a-f37b-48cb-9fe3-17d3ddb341b4)
-render_functions.js:285 No test results found for MMV
-render_functions.js:291 Set color #e6c23a for valve MMV
-render_functions.js:257 Checking test status for valve: SCSSV (4169ca77-9463-4df1-9393-9114ef664ae2)
-render_functions.js:285 No test results found for SCSSV
-render_functions.js:291 Set color #e6c23a for valve SCSSV
-render_functions.js:257 Checking test status for valve: IDV (a1826e4d-1944-4bcf-b385-e62735114d5e)
-render_functions.js:285 No test results found for IDV
-render_functions.js:291 Set color #e6c23a for valve IDV
-render_functions.js:257 Checking test status for valve: IFSV (30e0ecca-525c-4e5a-8bd9-36b2fdc4e565)
-render_functions.js:285 No test results found for IFSV
-render_functions.js:291 Set color #e6c23a for valve IFSV
-render_functions.js:257 Checking test status for valve: IHDV (bea86a63-2596-4a3b-afba-463a8ff0e14a)
-render_functions.js:285 No test results found for IHDV
-render_functions.js:291 Set color #e6c23a for valve IHDV
-render_functions.js:257 Checking test status for valve: PDV (ea9cbde3-3736-4952-ab5c-53cdb9b09ecb)
-render_functions.js:285 No test results found for PDV
-render_functions.js:291 Set color #e6c23a for valve PDV
-render_functions.js:257 Checking test status for valve: Choke (418c4e02-81c1-4627-a1e8-b53decb1f79d)
-render_functions.js:285 No test results found for Choke
-render_functions.js:257 Checking test status for valve: PFSV (54ad2f19-fef7-4127-aa1a-d2c012b20daf)
-render_functions.js:285 No test results found for PFSV
-render_functions.js:291 Set color #e6c23a for valve PFSV
-render_functions.js:257 Checking test status for valve: HBV (1eeba76c-9e76-4dd9-9b2a-2a41b245e0c6)
-render_functions.js:285 No test results found for HBV
-render_functions.js:291 Set color #e6c23a for valve HBV
-render_functions.js:257 Checking test status for valve: Test Sep HDV (8c53d095-6dcb-4b47-b16a-10b7fc25a5b7)
-render_functions.js:285 No test results found for Test Sep HDV
-render_functions.js:291 Set color #e6c23a for valve Test Sep HDV
-render_functions.js:257 Checking test status for valve: D Sep HDV (44dbc005-518b-436c-9ddf-ca28c9a7f2f8)
-render_functions.js:285 No test results found for D Sep HDV
-render_functions.js:291 Set color #e6c23a for valve D Sep HDV
-render_functions.js:257 Checking test status for valve: B Sep HDV (5f6b7ed9-3054-4f3b-bb0f-2e0b78f8084e)
-render_functions.js:285 No test results found for B Sep HDV
-render_functions.js:291 Set color #e6c23a for valve B Sep HDV
-render_functions.js:257 Checking test status for valve: FHDV (76ea7bf5-2071-4a8b-8366-02c4f72e3a2e)
-render_functions.js:285 No test results found for FHDV
-render_functions.js:245 Processing SVG elements for valve coloring
-render_functions.js:257 Checking test status for valve: TC (4f58a31a-f017-4065-9d54-dda9b75061b4)
-render_functions.js:285 No test results found for TC
-render_functions.js:291 Set color #e6c23a for valve TC
-render_functions.js:257 Checking test status for valve: 2SV (e78e3951-f2ad-4d6a-9415-21d68eee27af)
-render_functions.js:285 No test results found for 2SV
-render_functions.js:291 Set color #e6c23a for valve 2SV
-render_functions.js:257 Checking test status for valve: SV (dda5652d-3dd9-4602-b627-037ee1f45332)
-render_functions.js:285 No test results found for SV
-render_functions.js:291 Set color #e6c23a for valve SV
-render_functions.js:257 Checking test status for valve: MWV (37c31fcb-6dba-4c4c-a3b0-3b850addc048)
-render_functions.js:285 No test results found for MWV
-render_functions.js:291 Set color #e6c23a for valve MWV
-render_functions.js:257 Checking test status for valve: HWV (f3d31658-f4e8-443a-bd7c-86bccddc376f)
-render_functions.js:285 No test results found for HWV
-render_functions.js:291 Set color #e6c23a for valve HWV
-render_functions.js:257 Checking test status for valve: HMV (16859638-e5b3-4f46-ad5b-d7001c1c22fe)
-render_functions.js:285 No test results found for HMV
-render_functions.js:291 Set color #e6c23a for valve HMV
-render_functions.js:257 Checking test status for valve: MMV (fd977c5a-f37b-48cb-9fe3-17d3ddb341b4)
-render_functions.js:285 No test results found for MMV
-render_functions.js:291 Set color #e6c23a for valve MMV
-render_functions.js:257 Checking test status for valve: SCSSV (4169ca77-9463-4df1-9393-9114ef664ae2)
-render_functions.js:285 No test results found for SCSSV
-render_functions.js:291 Set color #e6c23a for valve SCSSV
-render_functions.js:257 Checking test status for valve: IDV (a1826e4d-1944-4bcf-b385-e62735114d5e)
-render_functions.js:285 No test results found for IDV
-render_functions.js:291 Set color #e6c23a for valve IDV
-render_functions.js:257 Checking test status for valve: IFSV (30e0ecca-525c-4e5a-8bd9-36b2fdc4e565)
-render_functions.js:285 No test results found for IFSV
-render_functions.js:291 Set color #e6c23a for valve IFSV
-render_functions.js:257 Checking test status for valve: IHDV (bea86a63-2596-4a3b-afba-463a8ff0e14a)
-render_functions.js:285 No test results found for IHDV
-render_functions.js:291 Set color #e6c23a for valve IHDV
-render_functions.js:257 Checking test status for valve: PDV (ea9cbde3-3736-4952-ab5c-53cdb9b09ecb)
-render_functions.js:285 No test results found for PDV
-render_functions.js:291 Set color #e6c23a for valve PDV
-render_functions.js:257 Checking test status for valve: Choke (418c4e02-81c1-4627-a1e8-b53decb1f79d)
-render_functions.js:285 No test results found for Choke
-render_functions.js:257 Checking test status for valve: PFSV (54ad2f19-fef7-4127-aa1a-d2c012b20daf)
-render_functions.js:285 No test results found for PFSV
-render_functions.js:291 Set color #e6c23a for valve PFSV
+async function loadValveTestStatuses(wellId) {
+  console.log(`Loading valve test results for well ${wellId}`);
+  try {
+    const wellConfig = (window.wells || []).find(w => w.id === wellId);
+    if (!wellConfig) {
+      console.error(`Could not find well with ID ${wellId}`);
+      return {};
+    }
+
+    // If we already have cached results for this well, reuse them
+    if (window.valveTestResults && (window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name])) {
+      console.log(`Using cached test results for well ${wellId}`);
+      return window.valveTestResults[wellId] || window.valveTestResults[wellConfig.name];
+    }
+
+    console.log(`Fetching test results from API for well ${wellId}`);
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/results?well=${wellId}`);
+    if (!response.ok) {
+      console.warn(`Failed to fetch valve test results for well ${wellId}: ${response.statusText}`);
+      return {};
+    }
+
+    const testResults = await response.json();
+    console.log(`Fetched test results for well ${wellId}:`, testResults);
+
+    const validatedResults = {};
+
+    if (Array.isArray(testResults)) {
+      // BACKEND RETURNS AN ARRAY: group tests by valveId
+      for (const raw of testResults) {
+        const valveId = raw.valveId;
+        if (!valveId) {
+          console.warn("Result without valveId, skipping:", raw);
+          continue;
+        }
+
+        // Build a shape compatible with validateTestOnFrontend
+        const syntheticResult = {
+          // main result
+          leak_rate_scfm: raw.leakRate,
+          leak_rate_pass: true,                  // will be recomputed
+          failure_reasons: [],                   // will be filled if needed
+          status: raw.status,
+
+          // limits
+          limits: {
+            monitoring_time_min: raw.monitoringTime,
+            critical_rate_scfm: raw.criticalRate
+          },
+
+          // thresholds: we don't have Pc/Pa/Pf/P2 from backend route yet,
+          // so leave them empty; validateTestOnFrontend will still use
+          // leak rates for pass/fail.
+          thresholds: {},
+
+          // inputs (for display / export)
+          inputs: {
+            Well: getWellNameById(wellId),
+            ValveType: raw.valveName || '',
+            BlockingValve: raw.blockingValve || '',
+            InitialPressure_psig: raw.initialPressure,
+            FinalPressure_psig: raw.finalPressure,
+            InitialTemperature_F: raw.initialTemperature,
+            FinalTemperature_F: raw.finalTemperature,
+            MonitoringTime_min: raw.monitoringTime,
+            LiquidYield: raw.liquid_yield,
+            SITHP_psig: raw.sithp,
+            specificHeatRatio: raw.k,
+            GasSG: raw.gasSG
+          },
+
+          // flatten some fields for the results panel
+          monitoringTime: raw.monitoringTime,
+          criticalRate: raw.criticalRate,
+          initialPressure: raw.initialPressure,
+          finalPressure: raw.finalPressure,
+          initialTemperature: raw.initialTemperature,
+          finalTemperature: raw.finalTemperature,
+          leakRate: raw.leakRate,
+          liquid_yield: raw.liquid_yield,
+          sithp: raw.sithp,
+          valveId: valveId,
+          valveName: raw.valveName
+        };
+
+        const limitsForValidation = {
+          critical_rate: raw.criticalRate
+        };
+
+        const validated = validateTestOnFrontend(syntheticResult, limitsForValidation);
+
+        if (!validatedResults[valveId]) {
+          validatedResults[valveId] = [];
+        }
+        validatedResults[valveId].push(validated);
+      }
+    } else {
+      // BACKEND RETURNS OBJECT KEYED BY VALVE (fallback)
+      for (const valveId in testResults) {
+        if (!Object.prototype.hasOwnProperty.call(testResults, valveId)) continue;
+        const resultOrArray = testResults[valveId];
+
+        if (Array.isArray(resultOrArray)) {
+          validatedResults[valveId] = resultOrArray.map(test =>
+            validateTestOnFrontend(test, {
+              critical_rate: test.criticalRate || test.limits?.critical_rate_scfm || 0
+            })
+          );
+        } else {
+          validatedResults[valveId] = validateTestOnFrontend(resultOrArray, {
+            critical_rate: resultOrArray.criticalRate || resultOrArray.limits?.critical_rate_scfm || 0
+          });
+        }
+      }
+    }
+
+    if (!window.valveTestResults) window.valveTestResults = {};
+    window.valveTestResults[wellId] = validatedResults;
+    if (wellConfig.name) window.valveTestResults[wellConfig.name] = validatedResults;
+
+    console.log(`Successfully loaded and validated test results for well ${wellId}`, validatedResults);
+    return validatedResults;
+  } catch (error) {
+    console.error(`Error loading valve test statuses for well ${wellId}:`, error);
+    return {};
+  }
+}
