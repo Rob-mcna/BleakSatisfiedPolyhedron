@@ -114,7 +114,19 @@ def get_integrity_test_failure():
     well_id = request.args.get("well")
     valve_id = request.args.get("valve")
     return jsonify(give_integrity_test_failure(well_id, valve_id))
+@integrity_teste_bp.route("/results", methods=["GET"])
+def get_integrity_results_for_well():
+    """
+    GET /api/integrity_test/results?well=<well_id>
 
+    Returns all integrity-test results for a given well.
+    The implementation of give_integrity_test_for_well must be in your controller.
+    """
+    well_id = request.args.get("well")
+    # You need to implement this in your controller:
+    # from app.controllers.well_integrity_test_controller import give_integrity_test_for_well
+    from app.controllers.well_integrity_test_controller import give_integrity_test_for_well
+    return jsonify(give_integrity_test_for_well(well_id))
 # ---------------------------------------------------------------------------
 # Actions taken on failures
 # ---------------------------------------------------------------------------
