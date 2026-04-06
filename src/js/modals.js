@@ -136,11 +136,21 @@ async function showCreateBlockingValveRuleModal() {
 
   // --- Fetch initial data needed for the form ---
   try {
-    const wellsRes = await fetch("http://http://127.0.0.1:5000/api/wells/");
+    const wellsRes = await fetch("http://127.0.0.1:5000/api/wells/");
     if (!wellsRes.ok) {
         throw new Error('Failed to fetch wells data for modal.');
     }
+    
     wellsData = await wellsRes.json();
+    
+    console.log('wellsData:', wellsData);
+    console.log('Array?', Array.isArray(wellsData));
+    
+    if (!Array.isArray(wellsData)) {
+      console.error('Expected wellsData to be an array but got:', wellsData);
+      alert('Backend returned invalid wells data. Check console.');
+      return;
+    }
     
     // Populate wells dropdown
     wellDropdown.innerHTML = '<option value="">-- Select a Well --</option>' + 
