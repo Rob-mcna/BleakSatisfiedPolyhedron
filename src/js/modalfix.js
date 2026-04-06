@@ -45,24 +45,19 @@ async function showCreateBlockingValveRuleModal() {
   document.getElementById('cancelCreateRuleBtn').onclick = () => modal.remove();
 
   let wellsData = [];
-  let wellheadsData = [];
+  let currentWellValves = [];
 
   try {
-    const [wellsRes, wellheadsRes] = await Promise.all([
-      fetch("http://127.0.0.1:5000/api/wells/"),
-      fetch("http://127.0.0.1:5000/api/wellheads/")
-    ]);
-
-    if (!wellsRes.ok) throw new Error('Failed to fetch wells data for modal.');
-    if (!wellheadsRes.ok) throw new Error('Failed to fetch wellheads data for modal.');
+    const wellsRes = await fetch("http://127.0.0.1:5000/api/wells/");
+    if (!wellsRes.ok) {
+      throw new Error('Failed to fetch wells data for modal.');
+    }
 
     wellsData = await wellsRes.json();
-    wellheadsData = await wellheadsRes.json();
 
     wellDropdown.innerHTML =
       '<option value="">-- Select a Well --</option>' +
       wellsData.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
-
   } catch (error) {
     console.error("Error initializing modal:", error);
     wellDropdown.innerHTML = `<option value="">Error loading wells</option>`;
@@ -70,37 +65,38 @@ async function showCreateBlockingValveRuleModal() {
     return;
   }
 
-  wellDropdown.onchange = () => {
+  wellDropdown.onchange = async () => {
     const selectedWellId = wellDropdown.value;
 
-    primaryValveDropdown.innerHTML = '<option value="">Select a well first</option>';
+    primaryValveDropdown.innerHTML = '<option value="">Loading valves...</option>';
     primaryValveDropdown.disabled = true;
     blockingValvesContainer.innerHTML = '<em style="color:#999;">Select a primary valve first.</em>';
+    currentWellValves = [];
 
     if (!selectedWellId) return;
 
-    const selectedWell = wellsData.find(w => String(w.id) === String(selectedWellId));
-    if (!selectedWell) {
-      primaryValveDropdown.innerHTML = '<option value="">Well not found</option>';
-      return;
-    }
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/wells/${selectedWellId}`);
+      if (!res.ok) throw new Error('Failed to fetch selected well');
 
-    const treeTypeName = selectedWell?.christmasTree?.treeType;
-    const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
-    const wellValves = matchingWellhead?.valves || [];
+      const selectedWell = await res.json();
+      currentWellValves = selectedWell?.christmasTree?.valves || [];
 
-    if (wellValves.length > 0) {
-      primaryValveDropdown.innerHTML =
-        '<option value="">-- Select Primary Valve --</option>' +
-        wellValves.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-      primaryValveDropdown.disabled = false;
-    } else {
-      primaryValveDropdown.innerHTML = '<option value="">No valves found for this well</option>';
+      if (currentWellValves.length > 0) {
+        primaryValveDropdown.innerHTML =
+          '<option value="">-- Select Primary Valve --</option>' +
+          currentWellValves.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        primaryValveDropdown.disabled = false;
+      } else {
+        primaryValveDropdown.innerHTML = '<option value="">No valves found for this well</option>';
+      }
+    } catch (error) {
+      console.error('Error loading valves for selected well:', error);
+      primaryValveDropdown.innerHTML = '<option value="">Error loading valves</option>';
     }
   };
 
   primaryValveDropdown.onchange = () => {
-    const selectedWellId = wellDropdown.value;
     const primaryValveId = primaryValveDropdown.value;
 
     if (!primaryValveId) {
@@ -108,11 +104,7 @@ async function showCreateBlockingValveRuleModal() {
       return;
     }
 
-    const selectedWell = wellsData.find(w => String(w.id) === String(selectedWellId));
-    const treeTypeName = selectedWell?.christmasTree?.treeType;
-    const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
-    const allWellValves = matchingWellhead?.valves || [];
-
+    const allWellValves = currentWellValves || [];
     const potentialBlockingValves = allWellValves.filter(v => String(v.id) !== String(primaryValveId));
 
     if (potentialBlockingValves.length > 0) {
@@ -162,11 +154,7 @@ async function showCreateBlockingValveRuleModal() {
       const cavityVolume = parseFloat(cavityVolumeInput.value);
 
       if (isNaN(cavityVolume) || cavityVolume < 0) {
-        const selectedWell = wellsData.find(w => String(w.id) === String(wellId));
-        const treeTypeName = selectedWell?.christmasTree?.treeType;
-        const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
-        const valve = matchingWellhead?.valves?.find(v => String(v.id) === String(blockingValveId));
-
+        const valve = currentWellValves.find(v => String(v.id) === String(blockingValveId));
         alert(`Please enter a valid, non-negative cavity volume for valve "${valve?.name || blockingValveId}".`);
         return;
       }
