@@ -1,42 +1,43 @@
-/**
- * Displays a modal form to register new Blocking Valve Rules.
- */
 async function showCreateBlockingValveRuleModal() {
   if (document.getElementById('createBlockingRuleModal')) return;
 
   const modal = document.createElement('div');
-  modal.className = 'modal';
   modal.id = 'createBlockingRuleModal';
+  modal.className = 'modal';
   modal.style.display = 'flex';
 
   modal.innerHTML = `
     <div class="modal-content" style="min-width:550px;">
       <h3>Register New Blocking Valve Rule</h3>
-      <form id="createBlockingRuleForm" autocomplete="off">
 
-        <label>Select Well:<br>
-          <select name="wellId" id="ruleWellId" required style="width:100%;">
-            <option value="">Loading wells...</option>
+      <form id="createBlockingRuleForm">
+        <label>
+          Select Well:<br>
+          <select id="ruleWellId" name="wellId" style="width:100%;">
+            <option value="">Loading wells…</option>
           </select>
         </label><br>
 
-        <label>Select Primary Valve:<br>
-          <select name="primaryValveId" id="rulePrimaryValveId" required style="width:100%;" disabled>
-            <option value="">Select a well first</option>
+        <label>
+          Select Primary Valve:<br>
+          <select id="rulePrimaryValveId"
+                  name="primaryValveId"
+                  style="width:100%;"
+                  disabled>
+            <option value="">Select well first</option>
           </select>
         </label><br>
 
-        <label>Blocking Valves & Cavity Volumes:<br>
+        <label>
+          Blocking Valves:<br>
           <div id="blockingValvesContainer"
                style="border:1px solid #555; padding:10px; height:220px; overflow-y:auto;">
-            <em style="color:#999;">Select a primary valve first.</em>
+            <em>Select a primary valve first.</em>
           </div>
         </label><br>
 
-        <div style="margin-top:18px;">
-          <button type="submit" class="primary-btn">Register Rules</button>
-          <button type="button" id="cancelCreateRuleBtn" class="secondary-btn">Cancel</button>
-        </div>
+        <button type="submit" class="primary-btn">Register Rules</button>
+        <button type="button" id="cancelCreateRuleBtn" class="secondary-btn">Cancel</button>
       </form>
     </div>
   `;
@@ -52,15 +53,25 @@ async function showCreateBlockingValveRuleModal() {
 
   let wellsData = [];
 
-  // --- LOAD WELLS ---
-  const wellsRes = await fetch("http://127.0.0.1:5000/api/wells/");
-  wellsData = await wellsRes.json();
+  // ---- FETCH WELLS (SAFE) ----
+  try {
+    const res = await fetch("http://127.0.0.1:5000/api/wells/");
+    if (!res.ok) throw new Error('Failed to load wells');
+    wellsData = await res.json();
+  } catch (err) {
+    console.error(err);
+    wellDropdown.innerHTML =
+      '<option value="">Failed to load wells</option>';
+    return;
+  }
 
   wellDropdown.innerHTML =
-    '<option value="">-- Select a Well --</option>' +
-    wellsData.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+    '<option value="">-- Select Well --</option>' +
+    wellsData.map(w =>
+      `<option value="${w.id}">${w.name}</option>`
+    ).join('');
 
-  // --- WELL → PRIMARY VALVE ---
+  // ---- WELL → PRIMARY VALVE ----
   wellDropdown.onchange = () => {
     const wellId = Number(wellDropdown.value);
 
@@ -69,7 +80,7 @@ async function showCreateBlockingValveRuleModal() {
       '<option value="">-- Select Primary Valve --</option>';
 
     blockingValvesContainer.innerHTML =
-      '<em style="color:#999;">Select a primary valve first.</em>';
+      '<em>Select a primary valve first.</em>';
 
     if (!wellId) return;
 
@@ -85,14 +96,15 @@ async function showCreateBlockingValveRuleModal() {
       return;
     }
 
-    primaryValveDropdown.innerHTML += valves
-      .map(v => `<option value="${v.id}">${v.name}</option>`)
-      .join('');
+    primaryValveDropdown.innerHTML +=
+      valves.map(v =>
+        `<option value="${v.id}">${v.name}</option>`
+      ).join('');
 
     primaryValveDropdown.disabled = false;
   };
 
-  // --- PRIMARY VALVE → BLOCKING VALVES ---
+  // ---- PRIMARY VALVE → BLOCKING VALVES ----
   primaryValveDropdown.onchange = () => {
     const wellId = Number(wellDropdown.value);
     const primaryValveId = Number(primaryValveDropdown.value);
@@ -105,42 +117,48 @@ async function showCreateBlockingValveRuleModal() {
       well?.christmas_tree?.valves ||
       [];
 
-    const blockingValves = valves.filter(v => Number(v.id) !== primaryValveId);
+    const blockingValves =
+      valves.filter(v => Number(v.id) !== primaryValveId);
 
     if (!blockingValves.length) {
       blockingValvesContainer.innerHTML =
-        '<em style="color:#999;">No blocking valves available.</em>';
+        '<em>No blocking valves available.</em>';
       return;
     }
 
-    blockingValvesContainer.innerHTML = blockingValves.map(v => `
-      <div style="margin-bottom:8px;">
-        <label>
-          <input type="checkbox" name="blockingValve" value="${v.id}">
-          ${v.name}
-        </label>
-        <input type="number"
-               name="cavityVolume_${v.id}"
-               min="0" step="0.01"
-               style="width:80px; margin-left:10px;"
-               disabled>
-      </div>
-    `).join('');
+    blockingValvesContainer.innerHTML =
+      blockingValves.map(v => `
+        <div style="margin-bottom:6px;">
+          <label>
+            <input type="checkbox"
+                   name="blockingValve"
+                   value="${v.id}">
+            ${v.name}
+          </label>
+          <input type="number"
+                 name="cavityVolume_${v.id}"
+                 min="0"
+                 step="0.01"
+                 style="width:80px; margin-left:10px;"
+                 disabled>
+        </div>
+      `).join('');
 
     blockingValvesContainer
-      .querySelectorAll('input[type="checkbox"]')
+      .querySelectorAll('[name="blockingValve"]')
       .forEach(cb => {
         cb.onchange = () => {
-          const input = blockingValvesContainer.querySelector(
-            `[name="cavityVolume_${cb.value}"]`
-          );
+          const input =
+            blockingValvesContainer.querySelector(
+              `[name="cavityVolume_${cb.value}"]`
+            );
           input.disabled = !cb.checked;
           if (!cb.checked) input.value = '';
         };
       });
   };
 
-  // --- SUBMIT ---
+  // ---- SUBMIT ----
   form.onsubmit = async e => {
     e.preventDefault();
 
@@ -152,7 +170,9 @@ async function showCreateBlockingValveRuleModal() {
     ).map(cb => ({
       blocking_valve_id: Number(cb.value),
       blocking_valve_value: Number(
-        form.querySelector(`[name="cavityVolume_${cb.value}"]`).value
+        form.querySelector(
+          `[name="cavityVolume_${cb.value}"]`
+        ).value
       )
     }));
 
@@ -162,7 +182,7 @@ async function showCreateBlockingValveRuleModal() {
     }
 
     await fetch("http://127.0.0.1:5000/api/cavity_volumes/", {
-      method: "POST",
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         well_id: wellId,
