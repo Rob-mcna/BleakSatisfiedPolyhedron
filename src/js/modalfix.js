@@ -1,7 +1,7 @@
 async function showCreateBlockingValveRuleModal() {
   if (document.getElementById('createBlockingRuleModal')) return;
 
-  const modal = document.createElement('div');
+  let modal = document.createElement('div');
   modal.className = 'modal';
   modal.id = 'createBlockingRuleModal';
   modal.style.display = 'flex';
@@ -36,7 +36,6 @@ async function showCreateBlockingValveRuleModal() {
       </form>
     </div>
   `;
-
   document.body.appendChild(modal);
 
   const form = document.getElementById('createBlockingRuleForm');
@@ -46,25 +45,28 @@ async function showCreateBlockingValveRuleModal() {
   document.getElementById('cancelCreateRuleBtn').onclick = () => modal.remove();
 
   let wellsData = [];
+  let wellheadsData = [];
 
   try {
-    const wellsRes = await fetch("http://127.0.0.1:5000/api/wells/");
+    const [wellsRes, wellheadsRes] = await Promise.all([
+      fetch("http://127.0.0.1:5000/api/wells/"),
+      fetch("http://127.0.0.1:5000/api/wellheads/")
+    ]);
+
     if (!wellsRes.ok) throw new Error('Failed to fetch wells data for modal.');
+    if (!wellheadsRes.ok) throw new Error('Failed to fetch wellheads data for modal.');
 
     wellsData = await wellsRes.json();
-
-    // If backend accidentally returns [data, status], normalize it
-    if (Array.isArray(wellsData) && wellsData.length === 2 && Array.isArray(wellsData[0])) {
-      wellsData = wellsData[0];
-    }
+    wellheadsData = await wellheadsRes.json();
 
     wellDropdown.innerHTML =
       '<option value="">-- Select a Well --</option>' +
       wellsData.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+
   } catch (error) {
     console.error("Error initializing modal:", error);
-    wellDropdown.innerHTML = '<option value="">Error loading wells</option>';
-    alert('Failed to load wells. Check console.');
+    wellDropdown.innerHTML = `<option value="">Error loading wells</option>`;
+    alert('Failed to load data needed to create a rule. Please check the console.');
     return;
   }
 
@@ -78,16 +80,14 @@ async function showCreateBlockingValveRuleModal() {
     if (!selectedWellId) return;
 
     const selectedWell = wellsData.find(w => String(w.id) === String(selectedWellId));
-    console.log('selectedWellId:', selectedWellId);
-    console.log('selectedWell:', selectedWell);
-    console.log('valves:', selectedWell?.christmasTree?.valves);
-
     if (!selectedWell) {
-      primaryValveDropdown.innerHTML = '<option value="">Selected well not found</option>';
+      primaryValveDropdown.innerHTML = '<option value="">Well not found</option>';
       return;
     }
 
-    const wellValves = selectedWell?.christmasTree?.valves || [];
+    const treeTypeName = selectedWell?.christmasTree?.treeType;
+    const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
+    const wellValves = matchingWellhead?.valves || [];
 
     if (wellValves.length > 0) {
       primaryValveDropdown.innerHTML =
@@ -109,7 +109,10 @@ async function showCreateBlockingValveRuleModal() {
     }
 
     const selectedWell = wellsData.find(w => String(w.id) === String(selectedWellId));
-    const allWellValves = selectedWell?.christmasTree?.valves || [];
+    const treeTypeName = selectedWell?.christmasTree?.treeType;
+    const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
+    const allWellValves = matchingWellhead?.valves || [];
+
     const potentialBlockingValves = allWellValves.filter(v => String(v.id) !== String(primaryValveId));
 
     if (potentialBlockingValves.length > 0) {
@@ -121,13 +124,13 @@ async function showCreateBlockingValveRuleModal() {
           </label>
           <label style="white-space:nowrap; margin-left:10px;">
             Cavity Volume (ft³):
-            <input type="number" name="cavityVolume_${valve.id}" min="0" step="0.01" style="width:80px;" disabled>
+            <input type="number" name="cavityVolume_${valve.id}" class="cavity-volume-input" min="0" step="0.01" style="width:80px;" disabled>
           </label>
         </div>
       `).join('');
 
       blockingValvesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.onchange = e => {
+        cb.onchange = (e) => {
           const volumeInput = blockingValvesContainer.querySelector(`[name="cavityVolume_${e.target.value}"]`);
           if (volumeInput) {
             volumeInput.disabled = !e.target.checked;
@@ -140,18 +143,13 @@ async function showCreateBlockingValveRuleModal() {
     }
   };
 
-  form.onsubmit = async e => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
 
     const wellId = form.wellId.value;
     const primaryValveId = form.primaryValveId.value;
+
     const selectedBlockingValves = Array.from(form.querySelectorAll('[name="blockingValve"]:checked'));
-
-    if (!wellId || !primaryValveId) {
-      alert('Please select a well and a primary valve.');
-      return;
-    }
-
     if (selectedBlockingValves.length === 0) {
       alert('You must select at least one blocking valve.');
       return;
@@ -164,7 +162,12 @@ async function showCreateBlockingValveRuleModal() {
       const cavityVolume = parseFloat(cavityVolumeInput.value);
 
       if (isNaN(cavityVolume) || cavityVolume < 0) {
-        alert(`Please enter a valid, non-negative cavity volume for valve ${blockingValveId}.`);
+        const selectedWell = wellsData.find(w => String(w.id) === String(wellId));
+        const treeTypeName = selectedWell?.christmasTree?.treeType;
+        const matchingWellhead = wellheadsData.find(wh => wh.treeType === treeTypeName);
+        const valve = matchingWellhead?.valves?.find(v => String(v.id) === String(blockingValveId));
+
+        alert(`Please enter a valid, non-negative cavity volume for valve "${valve?.name || blockingValveId}".`);
         return;
       }
 
@@ -183,21 +186,20 @@ async function showCreateBlockingValveRuleModal() {
     try {
       const response = await fetch("http://127.0.0.1:5000/api/cavity_volumes/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      const result = await response.json().catch(() => ({}));
 
       if (response.ok) {
         alert('Blocking valve rules registered successfully!');
         modal.remove();
       } else {
-        alert(`Error: ${result.message || result.Error || 'Unknown server error.'}`);
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message || errorData.Error || 'An unknown server error occurred.'}`);
       }
     } catch (error) {
       console.error('Client-side error while registering blocking valve rules:', error);
-      alert('A client-side error occurred. Please check the console.');
+      alert('A client-side error occurred. Please check the console for details.');
     }
   };
 }
