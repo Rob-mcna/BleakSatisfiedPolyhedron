@@ -288,7 +288,29 @@
 
 
 
+#reportsSection .reports-page-title {
+  max-width: 760px;
+  margin: 0 auto 12px auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
 
+#reportsSection .reports-page-title h2 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: left;
+}
+
+#reportsSection .reports-page-title p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  text-align: left;
+}
 
 #reportsSection .reports-layout.single-column {
   max-width: 760px;
