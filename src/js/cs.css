@@ -270,3 +270,37 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#reportsSection .reports-layout.single-column {
+  max-width: 760px;
+  margin: 0 auto;
+  display: block;
+}
+
+#reportsSection .hidden-report-output {
+  display: none;
+  margin-top: 16px;
+}
+
+#reportsSection .report-output.active {
+  display: block;
+}
