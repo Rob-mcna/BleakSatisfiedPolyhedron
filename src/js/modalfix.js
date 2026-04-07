@@ -1,190 +1,107 @@
-async function showCreateBlockingValveRuleModal() {
-  // Prevent duplicate modals
-  if (document.getElementById('createBlockingRuleModal')) return;
+function renderReportsSection() {
+  const reportsContainer = document.getElementById('reportsSection');
+  if (!reportsContainer) return;
 
-  let modal = document.createElement('div');
-  modal.className = 'modal';
-  modal.id = 'createBlockingRuleModal';
-  modal.style.display = 'flex';
+  const html = `
+    <div class="reports-page">
+      <div class="reports-hero">
+        <div class="reports-hero-text">
+          <div class="reports-kicker">REPORTING DASHBOARD</div>
+          <h1>Well Integrity Test Reports</h1>
+          <p>
+            Generate professional technical reports, failure summaries, compliance reviews,
+            and risk-based integrity analysis for your wells.
+          </p>
 
-  modal.innerHTML = `
-    <div class="modal-content" style="min-width:550px;">
-      <h3>Register New Blocking Valve Rule</h3>
-      <form id="createBlockingRuleForm" autocomplete="off">
-
-        <label>Select Well:<br>
-          <select name="wellId" id="ruleWellId" required style="width:100%;">
-            <option value="">Loading wells...</option>
-          </select>
-        </label><br>
-
-        <label>Select Primary Valve (the valve being tested):<br>
-          <select name="primaryValveId" id="rulePrimaryValveId" required style="width:100%;" disabled>
-            <option value="">Select a well first</option>
-          </select>
-        </label><br>
-
-        <label>Select Blocking Valves and Enter Cavity Volumes:<br>
-          <div id="blockingValvesContainer" style="border:1px solid #555; padding:10px; height: 220px; overflow-y:auto; background:#fff;">
-            <em style="color:#999;">Select a primary valve first.</em>
+          <div class="reports-hero-tags">
+            <span>Failure analysis</span>
+            <span>Compliance reporting</span>
+            <span>Risk assessment</span>
+            <span>Technical summaries</span>
           </div>
-        </label><br>
-
-        <div style="margin-top:18px;">
-          <button type="submit" class="primary-btn">Register Rules</button>
-          <button type="button" id="cancelCreateRuleBtn" class="secondary-btn">Cancel</button>
         </div>
-      </form>
+
+        <div class="reports-hero-summary">
+          <div class="summary-mini-card">
+            <div class="summary-mini-label">Available Reports</div>
+            <div class="summary-mini-value">6</div>
+          </div>
+          <div class="summary-mini-card">
+            <div class="summary-mini-label">Export Formats</div>
+            <div class="summary-mini-value">PDF / CSV</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reports-main-layout">
+        <aside class="reports-control-panel">
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <h3>Report Setup</h3>
+              <p>Select report type and filters</p>
+            </div>
+
+            <div class="report-type-selection">
+              <label for="reportTypeSelect">Report type</label>
+              <select id="reportTypeSelect">
+                <option value="">-- Select Report Type --</option>
+                <option value="valveTestResults">Valve Test Results Summary</option>
+                <option value="testFailureSummary">Critical Failure Analysis Report</option>
+                <option value="detailedTestResults">Detailed Technical Results</option>
+                <option value="wellOverview">Well Integrity Overview</option>
+                <option value="complianceReport">Regulatory Compliance Report</option>
+                <option value="riskAssessment">Risk Assessment Report</option>
+              </select>
+            </div>
+
+            <div id="reportFiltersContainer" class="report-filters">
+              <!-- Filters injected dynamically -->
+            </div>
+
+            <div class="report-actions">
+              <button id="generateReportBtn" class="primary-btn" disabled>Generate Report</button>
+              <button id="exportPdfBtn" class="secondary-btn" disabled>Export PDF</button>
+              <button id="exportCsvBtn" class="secondary-btn" disabled>Export CSV</button>
+              <button id="printReportBtn" class="secondary-btn" disabled>Print Report</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="reports-content-panel">
+          <div id="reportOutputContainer" class="report-output">
+            <div class="report-placeholder-card">
+              <div class="placeholder-badge">READY</div>
+              <h2>Ready to Generate Reports</h2>
+              <p>
+                Select a report type, apply filters, and generate a clean technical report
+                for analysis, export, or printing.
+              </p>
+
+              <div class="placeholder-feature-grid">
+                <div class="feature-box">
+                  <strong>Failure Analysis</strong>
+                  <span>Highlight critical test issues and root causes</span>
+                </div>
+                <div class="feature-box">
+                  <strong>Statistical Summaries</strong>
+                  <span>Generate technical summaries and pass/fail breakdowns</span>
+                </div>
+                <div class="feature-box">
+                  <strong>Compliance Reporting</strong>
+                  <span>Support integrity assurance and regulatory review</span>
+                </div>
+                <div class="feature-box">
+                  <strong>Export & Print</strong>
+                  <span>Create polished PDF and CSV deliverables</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   `;
-  document.body.appendChild(modal);
 
-  const form = document.getElementById('createBlockingRuleForm');
-  const wellDropdown = document.getElementById('ruleWellId');
-  const primaryValveDropdown = document.getElementById('rulePrimaryValveId');
-  const blockingValvesContainer = document.getElementById('blockingValvesContainer');
-  document.getElementById('cancelCreateRuleBtn').onclick = () => modal.remove();
-
-  let wellsData = [];
-  let allValves = [];
-
-  try {
-    const [wellsRes, valvesRes] = await Promise.all([
-      fetch("http://127.0.0.1:5000/api/wells/"),
-      fetch("http://127.0.0.1:5000/api/valves/")
-    ]);
-
-    if (!wellsRes.ok) throw new Error('Failed to fetch wells data for modal.');
-    if (!valvesRes.ok) throw new Error('Failed to fetch valves data for modal.');
-
-    wellsData = await wellsRes.json();
-    allValves = await valvesRes.json();
-
-    wellDropdown.innerHTML =
-      '<option value="">-- Select a Well --</option>' +
-      wellsData.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
-
-  } catch (error) {
-    console.error("Error initializing modal:", error);
-    wellDropdown.innerHTML = `<option value="">Error loading wells</option>`;
-    alert('Failed to load data needed to create a rule. Please check the console.');
-  }
-
-  wellDropdown.onchange = () => {
-    const selectedWellId = wellDropdown.value;
-
-    primaryValveDropdown.innerHTML = '<option value="">Select a well first</option>';
-    primaryValveDropdown.disabled = true;
-    blockingValvesContainer.innerHTML = '<em style="color:#999;">Select a primary valve first.</em>';
-
-    if (!selectedWellId) return;
-
-    if (allValves.length > 0) {
-      primaryValveDropdown.innerHTML =
-        '<option value="">-- Select Primary Valve --</option>' +
-        allValves.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-      primaryValveDropdown.disabled = false;
-    } else {
-      primaryValveDropdown.innerHTML = '<option value="">No valves found</option>';
-    }
-  };
-
-  primaryValveDropdown.onchange = () => {
-    const primaryValveId = primaryValveDropdown.value;
-
-    if (!primaryValveId) {
-      blockingValvesContainer.innerHTML = '<em style="color:#999;">Select a primary valve first.</em>';
-      return;
-    }
-
-    const potentialBlockingValves = allValves.filter(
-      v => String(v.id) !== String(primaryValveId)
-    );
-
-    if (potentialBlockingValves.length > 0) {
-      blockingValvesContainer.innerHTML = potentialBlockingValves.map(valve => `
-        <div style="display:flex; align-items:center; margin-bottom:8px;">
-          <label style="flex-grow:1; cursor:pointer; display:flex; align-items:center;">
-            <input type="checkbox" name="blockingValve" value="${valve.id}" style="margin-right:8px;">
-            ${valve.name}
-          </label>
-          <label style="white-space:nowrap; margin-left:10px;">
-            Cavity Volume (ft³):
-            <input type="number" name="cavityVolume_${valve.id}" class="cavity-volume-input" min="0" step="0.01" style="width:80px;" disabled>
-          </label>
-        </div>
-      `).join('');
-
-      blockingValvesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.onchange = (e) => {
-          const volumeInput = blockingValvesContainer.querySelector(`[name="cavityVolume_${e.target.value}"]`);
-          if (volumeInput) {
-            volumeInput.disabled = !e.target.checked;
-            if (!e.target.checked) volumeInput.value = '';
-          }
-        };
-      });
-    } else {
-      blockingValvesContainer.innerHTML = '<em style="color:#999;">No other valves available to be blocking valves.</em>';
-    }
-  };
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-
-    const wellId = form.wellId.value;
-    const primaryValveId = form.primaryValveId.value;
-
-    const selectedBlockingValves = Array.from(
-      form.querySelectorAll('[name="blockingValve"]:checked')
-    );
-
-    if (selectedBlockingValves.length === 0) {
-      alert('You must select at least one blocking valve.');
-      return;
-    }
-
-    const rules = [];
-    for (const checkbox of selectedBlockingValves) {
-      const blockingValveId = checkbox.value;
-      const cavityVolumeInput = form.querySelector(`[name="cavityVolume_${blockingValveId}"]`);
-      const cavityVolume = parseFloat(cavityVolumeInput.value);
-
-      if (isNaN(cavityVolume) || cavityVolume < 0) {
-        const valve = allValves.find(v => String(v.id) === String(blockingValveId));
-        alert(`Please enter a valid, non-negative cavity volume for valve "${valve?.name || blockingValveId}".`);
-        return;
-      }
-
-      rules.push({
-        blocking_valve_id: blockingValveId,
-        blocking_valve_value: cavityVolume
-      });
-    }
-
-    const payload = {
-      well_id: wellId,
-      testing_valve_id: primaryValveId,
-      blocking_valves: rules
-    };
-
-    try {
-      const response = await fetch("http://127.0.0.1:5000/api/cavity_volumes/", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        alert('Blocking valve rules registered successfully!');
-        modal.remove();
-      } else {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.message || errorData.Error || 'An unknown server error occurred.'}`);
-      }
-    } catch (error) {
-      console.error('Client-side error while registering blocking valve rules:', error);
-      alert('A client-side error occurred. Please check the console for details.');
-    }
-  };
+  reportsContainer.innerHTML = html;
+  setupReportEventHandlers();
 }
