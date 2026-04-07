@@ -122,3 +122,49 @@ function renderReportsSection() {
   reportsContainer.innerHTML = html;
   setupReportEventHandlers();
 }
+
+
+function renderReportsSection() {
+  const reportsContainer = document.getElementById('reportsSection');
+  if (!reportsContainer) return;
+
+  const html = `
+    <div class="reports-page-title">
+      <h2>Well Integrity Test Reports</h2>
+      <p>Generate and export well integrity reports.</p>
+    </div>
+
+    <div class="reports-layout single-column">
+      <div class="report-controls">
+        <div class="report-type-selection">
+          <label for="reportTypeSelect">Report type</label>
+          <select id="reportTypeSelect">
+            <option value="">-- Select Report Type --</option>
+            <option value="valveTestResults">Valve Test Results Summary</option>
+            <option value="testFailureSummary">Critical Failure Analysis Report</option>
+            <option value="detailedTestResults">Detailed Technical Results</option>
+            <option value="wellOverview">Well Integrity Overview</option>
+            <option value="complianceReport">Regulatory Compliance Report</option>
+            <option value="riskAssessment">Risk Assessment Report</option>
+          </select>
+        </div>
+
+        <div id="reportFiltersContainer" class="report-filters">
+          <!-- Filters will be populated dynamically -->
+        </div>
+
+        <div class="report-actions">
+          <button id="generateReportBtn" class="primary-btn" disabled>Generate Report</button>
+          <button id="exportPdfBtn" class="secondary-btn" disabled>Export PDF</button>
+          <button id="exportCsvBtn" class="secondary-btn" disabled>Export CSV</button>
+          <button id="printReportBtn" class="secondary-btn" disabled>Print Report</button>
+        </div>
+      </div>
+
+      <div id="reportOutputContainer" class="report-output hidden-report-output"></div>
+    </div>
+  `;
+
+  reportsContainer.innerHTML = html;
+  setupReportEventHandlers();
+}
