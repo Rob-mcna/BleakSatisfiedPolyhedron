@@ -168,3 +168,29 @@ function renderReportsSection() {
   reportsContainer.innerHTML = html;
   setupReportEventHandlers();
 }
+
+
+
+
+
+initialConditionsData.push({
+  well: wellName,
+  valve: valveType,
+  monitoringTime: mostRecentTest.monitoringTime ?? mostRecentTest.inputs?.MonitoringTime_min ?? 'N/A',
+  maxInternalRate: mostRecentTest.criticalRate ?? 'N/A',
+  initialTemperature: mostRecentTest.initialTemperature ?? mostRecentTest.inputs?.InitialTemperature ?? 'N/A',
+  initialPressure: mostRecentTest.initialPressure ?? mostRecentTest.Pa ?? mostRecentTest.inputs?.InitialPressure ?? 'N/A'
+});
+
+finalConditionsData.push({
+  well: wellName,
+  valve: valveType,
+  finalTemperature: mostRecentTest.finalTemperature ?? 'N/A',
+  finalPressure: mostRecentTest.P2 ?? 'N/A',
+  blockingValve: mostRecentTest.blockingValve ?? 'N/A',
+  actualInternalLeak: (mostRecentTest.leakRate !== null && mostRecentTest.leakRate !== undefined)
+    ? mostRecentTest.leakRate.toFixed(3)
+    : 'N/A',
+  status: mostRecentTest.status === 'pass' ? 'PASS' : 'FAIL',
+  comments: comments
+});
