@@ -1,0 +1,257 @@
+window.valveTestResults = {}; 
+window.selectedValveTestIndex = {};
+
+function sameId(a, b) {
+  return String(a ?? '').trim() === String(b ?? '').trim();
+}
+
+function getWellByIdSafe(wellId) {
+  return (window.wells || []).find(w => sameId(w.id, wellId)) || null;
+}
+
+function getWellResultsStore(wellId) {
+  const well = getWellByIdSafe(wellId);
+  return (
+    window.valveTestResults?.[wellId] ||
+    window.valveTestResults?.[well?.name] ||
+    {}
+  );
+}
+
+function normalizeIntegrityResultFromBackendForRender(row) {
+  const normalized = {
+    testId: row.testId,
+    valve_id: row.testValveId,
+    valve_type: row.testValveName || '',
+    blockingValveId: row.blockingValveId,
+    blockingValve: row.blockingValveName,
+
+    monitoringTime: row.monitoringTime,
+    criticalRate: row.criticalRate,
+    initialPressure: row.initialPressure,
+    finalPressure: row.finalPressure,
+    initialTemperature: row.initialTemperature,
+    finalTemperature: row.finalTemperature,
+
+    Pa: row.Pa,
+    Pc: row.Pc,
+    Pf: row.Pf,
+    P2: row.P2,
+    leakRate: row.leakRate,
+    sithp: row.sithp,
+    liquid_yield: row.liquid_yield,
+    status: row.status,
+    utc_timestamp: row.createdAt || row.updatedAt || null,
+    failure_reasons: [],
+
+    inputs: {
+      Well: row.wellId,
+      ValveType: row.testValveName || '',
+      BlockingValve: row.blockingValveName || '',
+      MonitoringTime_min: row.monitoringTime,
+      InitialPressure_psig: row.initialPressure,
+      FinalPressure_psig: row.finalPressure,
+      InitialTemperature_F: row.initialTemperature,
+      FinalTemperature_F: row.finalTemperature,
+      Sithp: row.sithp,
+      LiquidYield: row.liquid_yield,
+      timestamp: row.createdAt || row.updatedAt || null
+    }
+  };
+
+  return validateTestOnFrontend(normalized, {
+    critical_rate: Number(row.criticalRate || 0)
+  });
+}
+
+function groupIntegrityResultsByValveForRender(rows) {
+  const grouped = {};
+
+  (rows || []).forEach(row => {
+    const valveId = row.testValveId || row.valveId;
+    if (!valveId) return;
+
+    if (!grouped[valveId]) grouped[valveId] = [];
+    grouped[valveId].push(normalizeIntegrityResultFromBackendForRender(row));
+  });
+
+  Object.keys(grouped).forEach(valveId => {
+    grouped[valveId].sort((a, b) => {
+      const ta = new Date(a.utc_timestamp || a.inputs?.timestamp || 0).getTime();
+      const tb = new Date(b.utc_timestamp || b.inputs?.timestamp || 0).getTime();
+      return ta - tb;
+    });
+  });
+
+  return grouped;
+}
+
+OTRO
+
+dropdown.onchange = async function() {
+  const selectedWellId = this.value;
+  if (selectedWellId) {
+    localStorage.setItem('lastSelectedWellId', selectedWellId);
+
+    await loadValveTestStatuses(selectedWellId);
+
+    renderWellSchematicAndPanel(selectedWellId);
+
+    const wellDetailsContainer = document.getElementById('wellDetailsContainer');
+    if (wellDetailsContainer) wellDetailsContainer.innerHTML = '';
+
+    renderValveTestResultsPanel(selectedWellId);
+  }
+};
+
+
+OTRO
+
+function getMostRecentTestedWellId() {
+  let mostRecentWellId = null;
+  let mostRecentTime = 0;
+
+  if (window.valveTestResults) {
+    for (const [wellKey, valves] of Object.entries(window.valveTestResults)) {
+      const well = getWellByIdSafe(wellKey);
+      if (!well) continue; // skip name aliases, keep canonical ids only
+
+      for (const tests of Object.values(valves)) {
+        if (Array.isArray(tests)) {
+          for (const test of tests) {
+            const ts = test?.utc_timestamp || test?.inputs?.timestamp;
+            if (!ts) continue;
+
+            const t = new Date(ts).getTime();
+            if (t > mostRecentTime) {
+              mostRecentTime = t;
+              mostRecentWellId = well.id;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return mostRecentWellId;
+}
+
+
+OTRO
+
+async function loadValveTestStatuses(wellId) {
+  console.log(`Loading valve test results for well ${wellId}`);
+  try {
+    const wellConfig = getWellByIdSafe(wellId);
+    if (!wellConfig) {
+      console.error(`Could not find well with ID ${wellId}`);
+      return {};
+    }
+
+    console.log(`Fetching test results from API for well ${wellId}`);
+    const response = await fetch(`http://127.0.0.1:5000/api/integrity_test/results?well=${encodeURIComponent(wellId)}`);
+    if (!response.ok) {
+      console.warn(`Failed to fetch valve test results for well ${wellId}: ${response.statusText}`);
+      return {};
+    }
+
+    const rows = await response.json();
+    console.log(`Fetched test results for well ${wellId}:`, rows);
+
+    const validatedResults = groupIntegrityResultsByValveForRender(rows);
+
+    if (!window.valveTestResults) window.valveTestResults = {};
+    if (!window.selectedValveTestIndex) window.selectedValveTestIndex = {};
+
+    // canonical storage by well id
+    window.valveTestResults[wellId] = validatedResults;
+
+    // compatibility alias for any old code still reading by well name
+    if (wellConfig.name) {
+      window.valveTestResults[wellConfig.name] = validatedResults;
+    }
+
+    window.selectedValveTestIndex[wellId] = {};
+    if (wellConfig.name) {
+      window.selectedValveTestIndex[wellConfig.name] = {};
+    }
+
+    Object.keys(validatedResults).forEach(valveId => {
+      const lastIdx = validatedResults[valveId].length - 1;
+      window.selectedValveTestIndex[wellId][valveId] = lastIdx;
+      if (wellConfig.name) {
+        window.selectedValveTestIndex[wellConfig.name][valveId] = lastIdx;
+      }
+    });
+
+    console.log(`Successfully loaded and validated test results for well ${wellId}`, validatedResults);
+    return validatedResults;
+  } catch (error) {
+    console.error(`Error loading valve test statuses for well ${wellId}:`, error);
+    return {};
+  }
+}
+
+
+OTRO
+
+const wellConfig = getWellByIdSafe(wellId);
+
+OTRO
+
+console.log("Available test results for well:", wellId);
+console.log("By ID:", window.valveTestResults[wellId]);
+console.log("By name:", window.valveTestResults[wellConfig.name]);
+const resultsForWell = getWellResultsStore(wellId);
+
+OTRO
+const valveTests = resultsForWell[foundValve.id];
+
+OTRO
+const well = window.wells.find(w => sameId(w.id, wellId));
+
+OTRO
+const match = window.allValves.find(v => sameId(v.id, valveId));
+
+OTRO
+let resultsForWell = getWellResultsStore(currentWellId);
+
+OTRO
+window.currentWellContext = {
+  id: currentWellId,
+  name: getWellNameById(currentWellId)
+};
+const mapping = getFailureCategoryAndNumber(currentTestToShow);
+
+otro
+const wellId = window.currentWellContext?.id;
+const well = (window.wells || []).find(w => sameId(w.id, wellId));
+
+OTRO
+const multipleValvesFailed = checkForMultipleFailedValves(wellId);
+
+OTRO
+function checkForMultipleFailedValves(wellId) {
+  if (!wellId) return false;
+
+  const wellResults = getWellResultsStore(wellId);
+  let failedValveCount = 0;
+
+  for (const valveId in wellResults) {
+    if (wellResults.hasOwnProperty(valveId)) {
+      const tests = wellResults[valveId];
+      if (!Array.isArray(tests) || tests.length === 0) continue;
+
+      const latestTest = tests[tests.length - 1];
+      if (latestTest && latestTest.pass === false) {
+        failedValveCount++;
+      }
+    }
+  }
+
+  return failedValveCount > 1;
+}
+
+
+
+
