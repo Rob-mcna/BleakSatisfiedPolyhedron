@@ -1,4 +1,44 @@
+(async () => {
+  const hits = [];
+  const misses = [];
 
+  for (const well of (window.wells || [])) {
+    for (const valve of (well.christmasTree?.valves || [])) {
+      const url = `http://127.0.0.1:5000/api/integrity_test/failure?well=${encodeURIComponent(well.id)}&valve=${encodeURIComponent(valve.id)}`;
+
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json().catch(() => null);
+
+        if (resp.ok && data && !data.Error) {
+          hits.push({
+            wellName: well.name,
+            wellId: well.id,
+            valveName: valve.name,
+            valveId: valve.id,
+            data
+          });
+        } else {
+          misses.push({
+            wellName: well.name,
+            valveName: valve.name,
+            response: data
+          });
+        }
+      } catch (e) {
+        misses.push({
+          wellName: well.name,
+          valveName: valve.name,
+          response: String(e)
+        });
+      }
+    }
+  }
+
+  console.log('HITS COUNT =', hits.length);
+  console.log('FIRST HITS =', hits.slice(0, 10));
+  console.log('FIRST MISSES =', misses.slice(0, 10));
+})();
 
 async function hydrateEscalationsFromDatabase() {
   try {
