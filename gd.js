@@ -606,3 +606,173 @@ async function renderUserManagement() {
 }
 
 window.renderUserManagement = renderUserManagement;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+section.innerHTML = `
+  <div style="
+    max-width:1100px;
+    margin:28px auto;
+    display:grid;
+    grid-template-columns: 420px 1fr;
+    gap:28px;
+    align-items:start;
+    font-family:Arial,sans-serif;
+  ">
+    <div style="
+      background:#ffffff;
+      border:1px solid #e9eef5;
+      border-radius:20px;
+      padding:28px;
+      box-shadow:0 10px 30px rgba(15,23,42,0.06);
+    ">
+      <div style="margin-bottom:22px;">
+        <h1 style="margin:0;font-size:28px;color:#111827;">Create User</h1>
+        <div style="margin-top:6px;color:#6b7280;font-size:14px;">Minimal user management aligned with backend roles.</div>
+      </div>
+
+      <form id="createUserForm" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;font-weight:600;color:#374151;">Email</span>
+          <input type="email" id="createUserEmail" style="
+            width:100%;
+            padding:12px 14px;
+            border:1px solid #d7dee8;
+            border-radius:12px;
+            font-size:14px;
+            outline:none;
+            box-sizing:border-box;
+          " required>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;font-weight:600;color:#374151;">Pick Up</span>
+          <input type="text" id="createUserPickUp" style="
+            width:100%;
+            padding:12px 14px;
+            border:1px solid #d7dee8;
+            border-radius:12px;
+            font-size:14px;
+            outline:none;
+            box-sizing:border-box;
+          " required>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;font-weight:600;color:#374151;">Password</span>
+          <input type="password" id="createUserPassword" style="
+            width:100%;
+            padding:12px 14px;
+            border:1px solid #d7dee8;
+            border-radius:12px;
+            font-size:14px;
+            outline:none;
+            box-sizing:border-box;
+          " required>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-size:13px;font-weight:600;color:#374151;">Role</span>
+          <select id="createUserRole" style="
+            width:100%;
+            padding:12px 14px;
+            border:1px solid #d7dee8;
+            border-radius:12px;
+            font-size:14px;
+            outline:none;
+            box-sizing:border-box;
+            background:#fff;
+          " required>
+            <option value="">-- Select Role --</option>
+            ${BACKEND_ROLES.map(role => `<option value="${role}">${role}</option>`).join("")}
+          </select>
+        </label>
+
+        <div id="createUserMsg" style="min-height:20px;font-size:13px;"></div>
+
+        <button type="submit" style="
+          margin-top:4px;
+          border:none;
+          background:#0f62fe;
+          color:#fff;
+          padding:13px 16px;
+          border-radius:12px;
+          font-size:14px;
+          font-weight:700;
+          cursor:pointer;
+          box-shadow:0 8px 20px rgba(15,98,254,0.22);
+        ">
+          Create User
+        </button>
+      </form>
+    </div>
+
+    <div style="
+      background:#ffffff;
+      border:1px solid #e9eef5;
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 10px 30px rgba(15,23,42,0.06);
+    ">
+      <details id="usersAccordion" open style="
+        border:1px solid #e7edf3;
+        border-radius:14px;
+        background:#f8fbff;
+        padding:0 14px;
+      ">
+        <summary style="
+          cursor:pointer;
+          list-style:none;
+          padding:14px 0;
+          font-weight:600;
+          color:#1f2937;
+          outline:none;
+        ">
+          Existing users
+        </summary>
+        <div style="padding:0 0 14px 0;">
+          <input type="text" id="usersSearchInput" placeholder="Search by email, pickup, status, or role..." style="
+            width:100%;
+            padding:11px 12px;
+            border:1px solid #d7dee8;
+            border-radius:10px;
+            font-size:13px;
+            outline:none;
+            box-sizing:border-box;
+            background:#fff;
+          ">
+          <div style="display:flex;justify-content:flex-end;margin:10px 0 4px 0;">
+            <button type="button" id="refreshUsersBtn" style="
+              border:none;
+              background:#eaf3ff;
+              color:#0f62fe;
+              font-size:12px;
+              font-weight:600;
+              padding:8px 10px;
+              border-radius:10px;
+              cursor:pointer;
+            ">Refresh</button>
+          </div>
+          <div id="usersListContainer" style="max-height:520px;overflow:auto;color:#6b7280;font-size:14px;">
+            Loading...
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+`;
