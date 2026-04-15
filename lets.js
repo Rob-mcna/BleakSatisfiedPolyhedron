@@ -421,3 +421,141 @@
 
   window.renderUserManagement = renderUserManagementNew;
 })();
+
+
+
+
+<div style="
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:24px;
+  padding:24px;
+  box-shadow:0 12px 32px rgba(15,23,42,0.06);
+">
+  <details id="createUserAccordion" style="
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    background:#f8fafc;
+    padding:0 16px;
+  ">
+    <summary style="
+      cursor:pointer;
+      list-style:none;
+      padding:16px 0;
+      font-weight:800;
+      color:#111827;
+      font-size:15px;
+      outline:none;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    ">
+      <span>Create User</span>
+    </summary>
+
+    <div style="padding:4px 0 16px 0;">
+      <div style="margin-bottom:18px;">
+        <div style="
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          padding:6px 10px;
+          border-radius:999px;
+          background:#eff6ff;
+          color:#1d4ed8;
+          font-size:12px;
+          font-weight:700;
+          margin-bottom:12px;
+        ">ADMIN ONLY</div>
+
+        <div style="margin-top:4px;color:#6b7280;font-size:14px;">
+          Clean user creation aligned with backend roles.
+        </div>
+      </div>
+
+      <form id="createUserForm" autocomplete="off" style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#374151;">Email</span>
+            <input type="email" id="createUserEmail" style="
+              width:100%;
+              padding:14px 16px;
+              border:1px solid #d1d5db;
+              border-radius:14px;
+              font-size:14px;
+              outline:none;
+              box-sizing:border-box;
+              background:#fff;
+            " required>
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#374151;">Pick Up</span>
+            <input type="text" id="createUserPickUp" style="
+              width:100%;
+              padding:14px 16px;
+              border:1px solid #d1d5db;
+              border-radius:14px;
+              font-size:14px;
+              outline:none;
+              box-sizing:border-box;
+              background:#fff;
+            " required>
+          </label>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#374151;">Password</span>
+            <input type="password" id="createUserPassword" style="
+              width:100%;
+              padding:14px 16px;
+              border:1px solid #d1d5db;
+              border-radius:14px;
+              font-size:14px;
+              outline:none;
+              box-sizing:border-box;
+              background:#fff;
+            " required>
+          </label>
+
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#374151;">Role</span>
+            <select id="createUserRole" style="
+              width:100%;
+              padding:14px 16px;
+              border:1px solid #d1d5db;
+              border-radius:14px;
+              font-size:14px;
+              outline:none;
+              box-sizing:border-box;
+              background:#fff;
+            " required>
+              <option value="">-- Select Role --</option>
+              ${BACKEND_ROLES.map(role => `<option value="${role}">${role}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+
+        <div id="createUserMsg" style="min-height:20px;font-size:13px;font-weight:600;"></div>
+
+        <div style="padding-top:8px;">
+          <button type="submit" style="
+            min-width:180px;
+            border:none;
+            background:linear-gradient(135deg,#0f62fe,#2563eb);
+            color:#fff;
+            padding:14px 20px;
+            border-radius:14px;
+            font-size:14px;
+            font-weight:800;
+            cursor:pointer;
+            box-shadow:0 10px 24px rgba(37,99,235,0.24);
+          ">
+            Create User
+          </button>
+        </div>
+      </form>
+    </div>
+  </details>
+</div>
