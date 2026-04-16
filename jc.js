@@ -120,5 +120,93 @@ function displayEnhancedReport(data, headers, reportType, summary, groupedReport
 
 
 
+function buildGroupedLatestReportData(filters) {
+  const groupedMap = new Map();
+  const testResults = window.valveTestResults || {};
+
+  for (const [wellKey, valveResults] of Object.entries(testResults)) {
+    const well = findWellByKey(wellKey);
+    const wellId = String(well?.id || wellKey);
+    const wellName = well?.name || wellKey;
+
+    if (!matchesWellFilter(filters.well, wellKey, well)) continue;
+
+    if (!groupedMap.has(wellId)) {
+      groupedMap.set(wellId, {
+        wellId,
+        wellName,
+        sithp: 'N/A',
+        liquidYield: 'N/A',
+        rowMap: new Map()
+      });
+    }
+
+    const group = groupedMap.get(wellId);
+
+    for (const [valveId, tests] of Object.entries(valveResults)) {
+      const valveInfo = (window.allValves || []).find(v => sameWellValue(v.id, valveId));
+      const valveType = valveInfo?.name || 'Unknown';
+
+      if (filters.valveType && valveType !== filters.valveType) continue;
+
+      const latestTest = getLatestTestOnly(tests);
+      if (!latestTest || typeof latestTest !== 'object') continue;
+      if (filters.testStatus && latestTest.status !== filters.testStatus) continue;
+
+      if (group.sithp === 'N/A') {
+        group.sithp = latestTest.sithp || latestTest.inputs?.Sithp || 'N/A';
+      }
+      if (group.liquidYield === 'N/A') {
+        group.liquidYield = latestTest.liquid_yield || latestTest.inputs?.LiquidYield || 'N/A';
+      }
+
+      let comments = 'Test completed successfully';
+      if (isFailedTest(latestTest)) {
+        const reasons = determineFailureReasons(latestTest, valveType);
+        comments = reasons.length ? reasons.join('; ') : 'Test failed - reason undetermined';
+      }
+
+      group.rowMap.set(String(valveId), {
+        valveId: String(valveId),
+        valve: valveType,
+        monitoringTime: latestTest.monitoringTime ?? latestTest.inputs?.MonitoringTime_min ?? 'N/A',
+        maxInternalRate: latestTest.criticalRate ?? 'N/A',
+        initialTemperature: latestTest.initialTemperature ?? 'N/A',
+        initialPressure: latestTest.initialPressure ?? 'N/A',
+        finalTemperature: latestTest.finalTemperature ?? 'N/A',
+        finalPressure: latestTest.P2 ?? latestTest.finalPressure ?? 'N/A',
+        blockingValve: latestTest.blockingValve ?? 'N/A',
+        actualInternalLeak: (latestTest.leakRate !== null && latestTest.leakRate !== undefined)
+          ? Number(latestTest.leakRate).toFixed(3)
+          : 'N/A',
+        status: latestTest.status === 'pass' ? 'PASS' : 'FAIL',
+        comments,
+        rawTest: latestTest
+      });
+    }
+  }
+
+  const grouped = Array.from(groupedMap.values()).map(group => {
+    const rows = Array.from(group.rowMap.values()).sort((a, b) =>
+      String(a.valve).localeCompare(String(b.valve))
+    );
+
+    return {
+      wellId: group.wellId,
+      wellName: group.wellName,
+      sithp: group.sithp,
+      liquidYield: group.liquidYield,
+      rows,
+      totalValves: rows.length,
+      passed: rows.filter(r => r.status === 'PASS').length,
+      failed: rows.filter(r => r.status === 'FAIL').length
+    };
+  });
+
+  grouped.sort((a, b) => String(a.wellName).localeCompare(String(b.wellName)));
+  return grouped;
+}
+
+
 
 
