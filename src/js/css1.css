@@ -335,3 +335,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+  function logout() {
+  AuthService.logout();
+  currentUser = null;
+
+  [
+    'dashboardSection',
+    'wellsSection',
+    'dataSection',
+    'deviationsSection',
+    'reportsSection',
+    'usersSection',
+    'decisionMakersSection'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  document.getElementById('mainMenu').style.display = 'none';
+  document.querySelector('main').style.display = 'none';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+
+  showLogin();
+}
+
+
+
+
+
+async function initializeApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('mainMenu').style.display = '';
+  document.querySelector('main').style.display = '';
+
+  document.getElementById('userWelcome').innerHTML = `
+    <div class="user-welcome-label">Welcome</div>
+    <div class="user-welcome-name">${(currentUser.email || '').split('@')[0]}</div>
+    <div class="user-welcome-role">(${currentUser.role})</div>
+  `;
+
+  await initializeDecisionMakers();
+
+  // force dashboard always
+  showSection('dashboard');
+}
