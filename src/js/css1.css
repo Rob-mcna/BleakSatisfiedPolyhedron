@@ -152,3 +152,186 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
+
+
+
+
+
+  3333333333333333333
+
+  /* === Login Overlay === */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+.login-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #f8fafc;
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-overlay-title {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: 0.5px;
+  z-index: 1;
+  pointer-events: none;
+  text-shadow: none;
+  filter: none;
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+}
+
+.login-form {
+  background: #ffffff;
+  padding: 32px 30px 28px 30px;
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  min-width: 350px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid #e5e7eb;
+  position: relative;
+  backdrop-filter: none;
+}
+
+.login-form h2 {
+  margin: 0 0 10px 0;
+  color: #111827;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.5em;
+}
+
+.login-form label {
+  font-size: 0.95em;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  letter-spacing: 0.01em;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 1em;
+  margin-top: 1px;
+  outline: none;
+  color: #111827;
+  font-family: 'Arial', 'Segoe UI', Arial, sans-serif;
+  box-shadow: none;
+}
+
+.login-form input[type="text"]:focus,
+.login-form input[type="password"]:focus {
+  border-color: #8fd0ee;
+  box-shadow: 0 0 0 3px rgba(143, 208, 238, 0.18);
+  background: #ffffff;
+}
+
+.input-icon {
+  position: relative;
+}
+
+.input-icon svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  fill: #8cc8f8;
+  pointer-events: none;
+}
+
+.input-icon input {
+  padding-left: 38px !important;
+}
+
+.login-form button[type="submit"] {
+  margin-top: 10px;
+  padding: 12px 0;
+  border-radius: 12px;
+  background: #8fd0ee;
+  color: #0b3b52;
+  font-size: 1em;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid #7bbfdf;
+  letter-spacing: 0.02em;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  box-shadow: none;
+}
+
+.login-form button[type="submit"]:hover {
+  background: #7fc4e8;
+  color: #082d3f;
+  border-color: #6fb7dc;
+}
+
+.login-error {
+  color: #dc2626;
+  font-size: 0.92em;
+  min-height: 18px;
+  text-align: center;
+  margin-top: 2px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.login-form button.secondary-btn {
+  background: #ffffff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  font-size: 0.95em;
+  padding: 11px 0;
+  border-radius: 12px;
+  font-weight: 700;
+  width: 100%;
+  margin-top: 10px;
+  box-shadow: none;
+  letter-spacing: 0.02em;
+}
+
+.login-form button.secondary-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #cbd5e1;
+}
+
+@media (max-width: 480px) {
+  .login-form {
+    min-width: unset;
+    padding: 24px 6vw 20px 6vw;
+    gap: 14px;
+  }
+
+  .login-overlay-title {
+    font-size: 1.35rem;
+    top: 22px;
+  }
+
+  .login-form h2 {
+    font-size: 1.1em;
+  }
+}
+
