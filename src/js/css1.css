@@ -1,59 +1,31 @@
-const userWelcomeEl = document.getElementById('userWelcome');
-if (userWelcomeEl) {
-  const displayName = (currentUser.email || '').split('@')[0] || currentUser.email || 'User';
-  userWelcomeEl.innerHTML = `
-    <div class="sidebar-user-card">
-      <div class="sidebar-user-label">Welcome</div>
-      <div class="sidebar-user-name" title="${currentUser.email || ''}">${displayName}</div>
-      <div class="sidebar-user-email" title="${currentUser.email || ''}">${currentUser.email || ''}</div>
-      <div class="sidebar-user-role">(${currentUser.role || ''})</div>
-    </div>
-  `;
-}
+const userName = currentUser.username || currentUser.email.split('@')[0];
+document.getElementById('userWelcome').innerHTML = `
+  <div class="user-welcome-label">Welcome</div>
+  <div class="user-welcome-name">${userName}</div>
+  <div class="user-welcome-role">(${currentUser.role})</div>
+`;
 
 
 #userWelcome {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0 0 10px 0;
-}
-
-.sidebar-user-card {
-  padding: 16px 16px 14px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
-}
-
-.sidebar-user-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #9ca3af;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.sidebar-user-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-user-email {
-  margin-top: 2px;
-  font-size: 12px;
+  padding: 14px 16px 10px 16px;
   color: #6b7280;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
-.sidebar-user-role {
-  margin-top: 4px;
+.user-welcome-label {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.user-welcome-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.user-welcome-role {
   font-size: 12px;
   color: #9ca3af;
 }
